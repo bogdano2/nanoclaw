@@ -3,8 +3,9 @@
 
 FROM node:22-slim
 
-# Install system dependencies for Chromium
+# Install system dependencies for Chromium and native modules (better-sqlite3)
 RUN apt-get update && apt-get install -y \
+    python3 make g++ \
     chromium \
     fonts-liberation \
     fonts-noto-cjk \

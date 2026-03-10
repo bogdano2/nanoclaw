@@ -209,6 +209,12 @@ function readSecrets(): Record<string, string> {
     'ANTHROPIC_API_KEY',
     'ANTHROPIC_BASE_URL',
     'ANTHROPIC_AUTH_TOKEN',
+    'SLACK_XOXC_TOKEN',
+    'SLACK_D_COOKIE',
+    'GMAIL_CLIENT_ID',
+    'GMAIL_CLIENT_SECRET',
+    'GMAIL_REFRESH_TOKEN',
+    'GMAIL_FROM',
   ]);
 }
 

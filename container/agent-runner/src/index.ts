@@ -432,7 +432,9 @@ async function runQuery(
         'TeamCreate', 'TeamDelete', 'SendMessage',
         'TodoWrite', 'ToolSearch', 'Skill',
         'NotebookEdit',
-        'mcp__nanoclaw__*'
+        'mcp__nanoclaw__*',
+        'mcp__slack__*',
+        'mcp__gmail__*'
       ],
       env: sdkEnv,
       permissionMode: 'bypassPermissions',
@@ -448,6 +450,28 @@ async function runQuery(
             NANOCLAW_IS_MAIN: containerInput.isMain ? '1' : '0',
           },
         },
+        ...(sdkEnv.SLACK_XOXC_TOKEN ? {
+          slack: {
+            command: 'node',
+            args: [mcpServerPath.replace('ipc-mcp-stdio.js', 'slack-mcp-stdio.js')],
+            env: {
+              SLACK_XOXC_TOKEN: sdkEnv.SLACK_XOXC_TOKEN,
+              SLACK_D_COOKIE: sdkEnv.SLACK_D_COOKIE || '',
+            },
+          },
+        } : {}),
+        ...(sdkEnv.GMAIL_REFRESH_TOKEN ? {
+          gmail: {
+            command: 'node',
+            args: [mcpServerPath.replace('ipc-mcp-stdio.js', 'gmail-mcp-stdio.js')],
+            env: {
+              GMAIL_CLIENT_ID: sdkEnv.GMAIL_CLIENT_ID || '',
+              GMAIL_CLIENT_SECRET: sdkEnv.GMAIL_CLIENT_SECRET || '',
+              GMAIL_REFRESH_TOKEN: sdkEnv.GMAIL_REFRESH_TOKEN || '',
+              GMAIL_FROM: sdkEnv.GMAIL_FROM || '',
+            },
+          },
+        } : {}),
       },
       hooks: {
         PreCompact: [{ hooks: [createPreCompactHook(containerInput.assistantName)] }],
