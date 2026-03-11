@@ -5,10 +5,20 @@ import { CronExpressionParser } from 'cron-parser';
 
 import { DATA_DIR, IPC_POLL_INTERVAL, TIMEZONE } from './config.js';
 import { AvailableGroup } from './container-runner.js';
-import { createTask, deleteTask, getTaskById, updateTask } from './db.js';
+import {
+  addBdTaskSignal,
+  createBdTask,
+  createTask,
+  deleteBdTask,
+  deleteTask,
+  getBdTaskById,
+  getTaskById,
+  updateBdTask,
+  updateTask,
+} from './db.js';
 import { isValidGroupFolder } from './group-folder.js';
 import { logger } from './logger.js';
-import { RegisteredGroup } from './types.js';
+import { BdTaskSignal, RegisteredGroup } from './types.js';
 
 export interface IpcDeps {
   sendMessage: (jid: string, text: string) => Promise<void>;
@@ -171,6 +181,23 @@ export async function processTaskIpc(
     trigger?: string;
     requiresTrigger?: boolean;
     containerConfig?: RegisteredGroup['containerConfig'];
+    // For BD tasks
+    title?: string;
+    description?: string;
+    status?: string;
+    base_priority?: number;
+    deal?: string;
+    contact?: string;
+    contact_email?: string;
+    due_date?: string;
+    tags?: string;
+    parent_task_id?: string;
+    notes?: string;
+    reason?: string;
+    signal_type?: string;
+    source?: string;
+    summary?: string;
+    weight?: number;
   },
   sourceGroup: string, // Verified identity from IPC directory
   isMain: boolean, // Verified from directory path
@@ -446,6 +473,126 @@ export async function processTaskIpc(
           { data },
           'Invalid register_group request - missing required fields',
         );
+      }
+      break;
+
+    case 'bd_create_task':
+      if (data.title) {
+        const taskId =
+          data.taskId ||
+          `bd-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        createBdTask({
+          id: taskId,
+          group_folder: sourceGroup,
+          title: data.title,
+          description: data.description ?? null,
+          status: (data.status as 'open' | 'in_progress' | 'waiting') || 'open',
+          base_priority: data.base_priority ?? 50,
+          deal: data.deal ?? null,
+          contact: data.contact ?? null,
+          contact_email: data.contact_email ?? null,
+          due_date: data.due_date ?? null,
+          tags: data.tags ?? null,
+          parent_task_id: data.parent_task_id ?? null,
+          notes: data.notes ?? null,
+          created_at: new Date().toISOString(),
+        });
+        logger.info(
+          { taskId, sourceGroup, title: data.title },
+          'BD task created via IPC',
+        );
+
+        // Write response for agent to read
+        const responsePath = path.join(
+          DATA_DIR,
+          'ipc',
+          sourceGroup,
+          'bd_response.json',
+        );
+        fs.writeFileSync(
+          responsePath,
+          JSON.stringify({ taskId, status: 'created' }),
+        );
+      }
+      break;
+
+    case 'bd_update_task':
+      if (data.taskId) {
+        const task = getBdTaskById(data.taskId);
+        if (!task) {
+          logger.warn(
+            { taskId: data.taskId },
+            'BD task not found for update',
+          );
+          break;
+        }
+        if (!isMain && task.group_folder !== sourceGroup) {
+          logger.warn(
+            { taskId: data.taskId, sourceGroup },
+            'Unauthorized BD task update attempt',
+          );
+          break;
+        }
+        const updates: Record<string, unknown> = {};
+        if (data.title !== undefined) updates.title = data.title;
+        if (data.description !== undefined)
+          updates.description = data.description;
+        if (data.status !== undefined) updates.status = data.status;
+        if (data.base_priority !== undefined)
+          updates.base_priority = data.base_priority;
+        if (data.deal !== undefined) updates.deal = data.deal;
+        if (data.contact !== undefined) updates.contact = data.contact;
+        if (data.contact_email !== undefined)
+          updates.contact_email = data.contact_email;
+        if (data.due_date !== undefined) updates.due_date = data.due_date;
+        if (data.tags !== undefined) updates.tags = data.tags;
+        if (data.notes !== undefined) updates.notes = data.notes;
+        if (data.parent_task_id !== undefined)
+          updates.parent_task_id = data.parent_task_id;
+
+        updateBdTask(data.taskId, updates, data.reason);
+        logger.info(
+          { taskId: data.taskId, sourceGroup },
+          'BD task updated via IPC',
+        );
+      }
+      break;
+
+    case 'bd_delete_task':
+      if (data.taskId) {
+        const task = getBdTaskById(data.taskId);
+        if (task && (isMain || task.group_folder === sourceGroup)) {
+          deleteBdTask(data.taskId);
+          logger.info(
+            { taskId: data.taskId, sourceGroup },
+            'BD task deleted via IPC',
+          );
+        } else {
+          logger.warn(
+            { taskId: data.taskId, sourceGroup },
+            'Unauthorized BD task delete attempt',
+          );
+        }
+      }
+      break;
+
+    case 'bd_add_signal':
+      if (data.taskId && data.signal_type) {
+        const task = getBdTaskById(data.taskId);
+        if (task && (isMain || task.group_folder === sourceGroup)) {
+          addBdTaskSignal({
+            task_id: data.taskId,
+            signal_type: data.signal_type as BdTaskSignal['signal_type'],
+            source: data.source ?? null,
+            summary: data.summary ?? null,
+            weight: data.weight ?? 10,
+            created_at: new Date().toISOString(),
+          });
+          logger.info(
+            { taskId: data.taskId, signalType: data.signal_type, sourceGroup },
+            'BD task signal added via IPC',
+          );
+        }
       }
       break;
 

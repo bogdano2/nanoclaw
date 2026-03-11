@@ -6,6 +6,11 @@ import { ASSISTANT_NAME, DATA_DIR, STORE_DIR } from './config.js';
 import { isValidGroupFolder } from './group-folder.js';
 import { logger } from './logger.js';
 import {
+  BdTask,
+  BdTaskHistory,
+  BdTaskSignal,
+  BdTaskStatus,
+  BdTaskWithPriority,
   NewMessage,
   RegisteredGroup,
   ScheduledTask,
@@ -82,6 +87,57 @@ function createSchema(database: Database.Database): void {
       container_config TEXT,
       requires_trigger INTEGER DEFAULT 1
     );
+
+    -- BD Task tracking
+    CREATE TABLE IF NOT EXISTS bd_tasks (
+      id TEXT PRIMARY KEY,
+      group_folder TEXT NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT,
+      status TEXT NOT NULL DEFAULT 'open',
+      base_priority INTEGER NOT NULL DEFAULT 50,
+      deal TEXT,
+      contact TEXT,
+      contact_email TEXT,
+      due_date TEXT,
+      tags TEXT,
+      parent_task_id TEXT,
+      notes TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      completed_at TEXT,
+      last_signal_at TEXT,
+      FOREIGN KEY (parent_task_id) REFERENCES bd_tasks(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_bd_tasks_status ON bd_tasks(status);
+    CREATE INDEX IF NOT EXISTS idx_bd_tasks_deal ON bd_tasks(deal);
+    CREATE INDEX IF NOT EXISTS idx_bd_tasks_due_date ON bd_tasks(due_date);
+    CREATE INDEX IF NOT EXISTS idx_bd_tasks_contact ON bd_tasks(contact);
+
+    CREATE TABLE IF NOT EXISTS bd_task_signals (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      task_id TEXT NOT NULL,
+      signal_type TEXT NOT NULL,
+      source TEXT,
+      summary TEXT,
+      weight INTEGER NOT NULL DEFAULT 10,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (task_id) REFERENCES bd_tasks(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_bd_signals_task ON bd_task_signals(task_id);
+    CREATE INDEX IF NOT EXISTS idx_bd_signals_created ON bd_task_signals(created_at);
+
+    CREATE TABLE IF NOT EXISTS bd_task_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      task_id TEXT NOT NULL,
+      field_changed TEXT NOT NULL,
+      old_value TEXT,
+      new_value TEXT,
+      reason TEXT,
+      changed_at TEXT NOT NULL,
+      FOREIGN KEY (task_id) REFERENCES bd_tasks(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_bd_history_task ON bd_task_history(task_id);
   `);
 
   // Add context_mode column if it doesn't exist (migration for existing DBs)
@@ -147,15 +203,21 @@ export function initDatabase(): void {
 
   db = new Database(dbPath);
   createSchema(db);
+  registerCustomFunctions(db);
 
   // Migrate from JSON files if they exist
   migrateJsonState();
+}
+
+function registerCustomFunctions(database: Database.Database): void {
+  database.function('EXP', (x: unknown) => Math.exp(Number(x)));
 }
 
 /** @internal - for tests only. Creates a fresh in-memory database. */
 export function _initTestDatabase(): void {
   db = new Database(':memory:');
   createSchema(db);
+  registerCustomFunctions(db);
 }
 
 /**
@@ -636,6 +698,269 @@ export function getAllRegisteredGroups(): Record<string, RegisteredGroup> {
     };
   }
   return result;
+}
+
+// --- BD Task functions ---
+
+// SQL fragment for computing priority at query time
+const BD_PRIORITY_SQL = `
+  MIN(100, MAX(0,
+    t.base_priority
+    + MIN(25, COALESCE((
+        SELECT SUM(
+          (s.weight / 100.0) * 25.0 * EXP(-1.0 * (julianday('now') - julianday(s.created_at)) / 7.0)
+        )
+        FROM bd_task_signals s
+        WHERE s.task_id = t.id
+          AND julianday('now') - julianday(s.created_at) <= 14
+      ), 0))
+    + CASE
+        WHEN t.due_date IS NOT NULL AND t.status NOT IN ('done','cancelled') THEN
+          CASE
+            WHEN julianday(t.due_date) - julianday('now') <= 0 THEN 30
+            WHEN julianday(t.due_date) - julianday('now') <= 14 THEN
+              30.0 * EXP(-1.0 * (julianday(t.due_date) - julianday('now')) / 3.0)
+            ELSE 0
+          END
+        ELSE 0
+      END
+    - MIN(20, MAX(0, 0.5 * (julianday('now') - julianday(
+        MAX(t.updated_at, COALESCE(t.last_signal_at, t.updated_at))
+      ))))
+  ))`;
+
+function bdTaskQuery(where: string, orderBy: string = 'computed_priority DESC'): string {
+  return `SELECT t.*, ${BD_PRIORITY_SQL} AS computed_priority FROM bd_tasks t WHERE ${where} ORDER BY ${orderBy}`;
+}
+
+export function createBdTask(
+  task: Omit<BdTask, 'updated_at' | 'completed_at' | 'last_signal_at'>,
+): void {
+  const now = new Date().toISOString();
+  db.prepare(
+    `INSERT INTO bd_tasks (id, group_folder, title, description, status, base_priority, deal, contact, contact_email, due_date, tags, parent_task_id, notes, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    task.id,
+    task.group_folder,
+    task.title,
+    task.description ?? null,
+    task.status,
+    task.base_priority,
+    task.deal ?? null,
+    task.contact ?? null,
+    task.contact_email ?? null,
+    task.due_date ?? null,
+    task.tags ?? null,
+    task.parent_task_id ?? null,
+    task.notes ?? null,
+    task.created_at,
+    now,
+  );
+}
+
+export function getBdTaskById(id: string): BdTaskWithPriority | undefined {
+  return db.prepare(bdTaskQuery('t.id = ?')).get(id) as
+    | BdTaskWithPriority
+    | undefined;
+}
+
+export function updateBdTask(
+  id: string,
+  updates: Partial<
+    Pick<
+      BdTask,
+      | 'title'
+      | 'description'
+      | 'status'
+      | 'base_priority'
+      | 'deal'
+      | 'contact'
+      | 'contact_email'
+      | 'due_date'
+      | 'tags'
+      | 'notes'
+      | 'parent_task_id'
+    >
+  >,
+  reason?: string,
+): void {
+  const current = db
+    .prepare('SELECT * FROM bd_tasks WHERE id = ?')
+    .get(id) as BdTask | undefined;
+  if (!current) return;
+
+  const now = new Date().toISOString();
+  const fields: string[] = ['updated_at = ?'];
+  const values: unknown[] = [now];
+  const historyEntries: Array<{
+    field: string;
+    oldVal: string | null;
+    newVal: string | null;
+  }> = [];
+
+  const trackable: Array<keyof typeof updates> = [
+    'title',
+    'description',
+    'status',
+    'base_priority',
+    'deal',
+    'contact',
+    'contact_email',
+    'due_date',
+    'tags',
+    'notes',
+    'parent_task_id',
+  ];
+
+  for (const key of trackable) {
+    if (updates[key] !== undefined) {
+      const oldVal = String(current[key] ?? '');
+      const newVal = String(updates[key] ?? '');
+      if (oldVal !== newVal) {
+        fields.push(`${key} = ?`);
+        values.push(updates[key] ?? null);
+        historyEntries.push({ field: key, oldVal, newVal });
+      }
+    }
+  }
+
+  // Handle completion timestamp
+  if (
+    updates.status &&
+    (updates.status === 'done' || updates.status === 'cancelled') &&
+    !current.completed_at
+  ) {
+    fields.push('completed_at = ?');
+    values.push(now);
+  }
+
+  if (fields.length <= 1) return; // only updated_at, nothing else changed
+
+  values.push(id);
+
+  const txn = db.transaction(() => {
+    db.prepare(
+      `UPDATE bd_tasks SET ${fields.join(', ')} WHERE id = ?`,
+    ).run(...values);
+
+    const insertHistory = db.prepare(
+      `INSERT INTO bd_task_history (task_id, field_changed, old_value, new_value, reason, changed_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    );
+    for (const entry of historyEntries) {
+      insertHistory.run(id, entry.field, entry.oldVal, entry.newVal, reason ?? null, now);
+    }
+  });
+  txn();
+}
+
+export function deleteBdTask(id: string): void {
+  const txn = db.transaction(() => {
+    db.prepare('DELETE FROM bd_task_history WHERE task_id = ?').run(id);
+    db.prepare('DELETE FROM bd_task_signals WHERE task_id = ?').run(id);
+    // Unlink subtasks
+    db.prepare(
+      'UPDATE bd_tasks SET parent_task_id = NULL WHERE parent_task_id = ?',
+    ).run(id);
+    db.prepare('DELETE FROM bd_tasks WHERE id = ?').run(id);
+  });
+  txn();
+}
+
+export function getTopBdTasks(limit: number = 20): BdTaskWithPriority[] {
+  return db
+    .prepare(
+      bdTaskQuery("t.status NOT IN ('done','cancelled')") + ' LIMIT ?',
+    )
+    .all(limit) as BdTaskWithPriority[];
+}
+
+export function getBdTasksByDeal(deal: string): BdTaskWithPriority[] {
+  return db
+    .prepare(
+      bdTaskQuery("t.deal = ? AND t.status NOT IN ('done','cancelled')"),
+    )
+    .all(deal) as BdTaskWithPriority[];
+}
+
+export function getBdTasksByContact(contact: string): BdTaskWithPriority[] {
+  return db
+    .prepare(
+      bdTaskQuery(
+        "t.contact = ? AND t.status NOT IN ('done','cancelled')",
+      ),
+    )
+    .all(contact) as BdTaskWithPriority[];
+}
+
+export function getBdTasksByStatus(status: BdTaskStatus): BdTaskWithPriority[] {
+  return db
+    .prepare(bdTaskQuery('t.status = ?'))
+    .all(status) as BdTaskWithPriority[];
+}
+
+export function getOverdueBdTasks(): BdTaskWithPriority[] {
+  return db
+    .prepare(
+      bdTaskQuery(
+        "t.due_date IS NOT NULL AND t.due_date < datetime('now') AND t.status NOT IN ('done','cancelled')",
+      ),
+    )
+    .all() as BdTaskWithPriority[];
+}
+
+export function searchBdTasks(query: string): BdTaskWithPriority[] {
+  const pattern = `%${query}%`;
+  return db
+    .prepare(
+      bdTaskQuery(
+        '(t.title LIKE ? OR t.description LIKE ? OR t.notes LIKE ? OR t.deal LIKE ? OR t.contact LIKE ?)',
+      ),
+    )
+    .all(pattern, pattern, pattern, pattern, pattern) as BdTaskWithPriority[];
+}
+
+export function addBdTaskSignal(
+  signal: Omit<BdTaskSignal, 'id'>,
+): void {
+  const txn = db.transaction(() => {
+    db.prepare(
+      `INSERT INTO bd_task_signals (task_id, signal_type, source, summary, weight, created_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    ).run(
+      signal.task_id,
+      signal.signal_type,
+      signal.source ?? null,
+      signal.summary ?? null,
+      signal.weight,
+      signal.created_at,
+    );
+
+    db.prepare(
+      'UPDATE bd_tasks SET last_signal_at = ?, updated_at = ? WHERE id = ?',
+    ).run(signal.created_at, signal.created_at, signal.task_id);
+  });
+  txn();
+}
+
+export function getSignalsForTask(
+  taskId: string,
+  limit: number = 20,
+): BdTaskSignal[] {
+  return db
+    .prepare(
+      'SELECT * FROM bd_task_signals WHERE task_id = ? ORDER BY created_at DESC LIMIT ?',
+    )
+    .all(taskId, limit) as BdTaskSignal[];
+}
+
+export function getBdTaskHistory(taskId: string): BdTaskHistory[] {
+  return db
+    .prepare(
+      'SELECT * FROM bd_task_history WHERE task_id = ? ORDER BY changed_at DESC',
+    )
+    .all(taskId) as BdTaskHistory[];
 }
 
 // --- JSON migration ---

@@ -77,6 +77,67 @@ export interface TaskRunLog {
   error: string | null;
 }
 
+// --- BD Task types ---
+
+export type BdTaskStatus =
+  | 'open'
+  | 'in_progress'
+  | 'waiting'
+  | 'done'
+  | 'cancelled';
+
+export type BdSignalType =
+  | 'email_received'
+  | 'email_sent'
+  | 'message_mention'
+  | 'meeting'
+  | 'manual_bump'
+  | 'deal_update';
+
+export interface BdTask {
+  id: string;
+  group_folder: string;
+  title: string;
+  description: string | null;
+  status: BdTaskStatus;
+  base_priority: number; // 0-100
+  deal: string | null;
+  contact: string | null;
+  contact_email: string | null;
+  due_date: string | null; // ISO 8601
+  tags: string | null; // JSON array
+  parent_task_id: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  completed_at: string | null;
+  last_signal_at: string | null;
+}
+
+export interface BdTaskWithPriority extends BdTask {
+  computed_priority: number;
+}
+
+export interface BdTaskSignal {
+  id?: number;
+  task_id: string;
+  signal_type: BdSignalType;
+  source: string | null;
+  summary: string | null;
+  weight: number; // 1-100
+  created_at: string;
+}
+
+export interface BdTaskHistory {
+  id?: number;
+  task_id: string;
+  field_changed: string;
+  old_value: string | null;
+  new_value: string | null;
+  reason: string | null;
+  changed_at: string;
+}
+
 // --- Channel abstraction ---
 
 export interface Channel {
