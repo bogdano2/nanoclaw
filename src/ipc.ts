@@ -18,6 +18,7 @@ import {
 } from './db.js';
 import { isValidGroupFolder } from './group-folder.js';
 import { logger } from './logger.js';
+import { regenerateBdTaskMarkdown } from './bd-task-markdown.js';
 import { BdTaskSignal, RegisteredGroup } from './types.js';
 
 export interface IpcDeps {
@@ -595,5 +596,10 @@ export async function processTaskIpc(
 
     default:
       logger.warn({ type: data.type }, 'Unknown IPC task type');
+  }
+
+  // Regenerate Obsidian markdown after any BD task operation
+  if (data.type.startsWith('bd_')) {
+    regenerateBdTaskMarkdown();
   }
 }
