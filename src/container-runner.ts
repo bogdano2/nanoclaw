@@ -12,8 +12,10 @@ import {
   CONTAINER_TIMEOUT,
   CREDENTIAL_PROXY_PORT,
   DATA_DIR,
+  GOG_PROXY_PORT,
   GROUPS_DIR,
   IDLE_TIMEOUT,
+  MEMU_PROXY_PORT,
   TIMEZONE,
 } from './config.js';
 import { resolveGroupFolderPath, resolveGroupIpcPath } from './group-folder.js';
@@ -26,6 +28,7 @@ import {
   stopContainer,
 } from './container-runtime.js';
 import { detectAuthMode } from './credential-proxy.js';
+import { readEnvFile } from './env.js';
 import { validateAdditionalMounts } from './mount-security.js';
 import { RegisteredGroup } from './types.js';
 
@@ -199,6 +202,17 @@ function buildVolumeMounts(
     readonly: false,
   });
 
+  // Mount gog (Google Workspace CLI) credentials read-only so the container
+  // can access Gmail, Calendar, etc. via `gog` commands.
+  const gogDir = path.join(process.cwd(), 'store', 'gogcli');
+  if (fs.existsSync(gogDir)) {
+    mounts.push({
+      hostPath: gogDir,
+      containerPath: '/home/node/.config/gogcli',
+      readonly: true,
+    });
+  }
+
   // Additional mounts validated against external allowlist (tamper-proof from containers)
   if (group.containerConfig?.additionalMounts) {
     const validatedMounts = validateAdditionalMounts(
@@ -237,6 +251,29 @@ function buildContainerArgs(
   } else {
     args.push('-e', 'CLAUDE_CODE_OAUTH_TOKEN=placeholder');
   }
+
+  // Pass integration credentials from .env so MCP servers inside the
+  // container can authenticate with external services (Gmail, Slack, etc.).
+  const integrationKeys = [
+    'GMAIL_CLIENT_ID',
+    'GMAIL_CLIENT_SECRET',
+    'GMAIL_REFRESH_TOKEN',
+    'GMAIL_FROM',
+    'SLACK_XOXC_TOKEN',
+    'SLACK_D_COOKIE',
+  ];
+  const integrationSecrets = readEnvFile(integrationKeys);
+  for (const [key, value] of Object.entries(integrationSecrets)) {
+    args.push('-e', `${key}=${value}`);
+  }
+
+  // Pass gog proxy port so the container's gog MCP server can reach the host
+  args.push('-e', `GOG_PROXY_PORT=${GOG_PROXY_PORT}`);
+  args.push('-e', `GOG_PROXY_HOST=${CONTAINER_HOST_GATEWAY}`);
+
+  // Pass MemU proxy port so the container's memu MCP server can reach the host
+  args.push('-e', `MEMU_PROXY_PORT=${MEMU_PROXY_PORT}`);
+  args.push('-e', `MEMU_PROXY_HOST=${CONTAINER_HOST_GATEWAY}`);
 
   // Runtime-specific args for host gateway resolution
   args.push(...hostGatewayArgs());

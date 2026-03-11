@@ -142,7 +142,7 @@ function getSessionSummary(sessionId: string, transcriptPath: string): string | 
 /**
  * Archive the full transcript to conversations/ before compaction.
  */
-function createPreCompactHook(assistantName?: string): HookCallback {
+function createPreCompactHook(assistantName?: string, groupFolder?: string): HookCallback {
   return async (input, _toolUseId, _context) => {
     const preCompact = input as PreCompactHookInput;
     const transcriptPath = preCompact.transcript_path;
@@ -176,6 +176,27 @@ function createPreCompactHook(assistantName?: string): HookCallback {
       fs.writeFileSync(filePath, markdown);
 
       log(`Archived conversation to ${filePath}`);
+
+      // Send transcript to MemU for memory extraction (auto-flush before compaction)
+      const memuPort = process.env.MEMU_PROXY_PORT;
+      const memuHost = process.env.MEMU_PROXY_HOST || 'host.docker.internal';
+      const memuGroupFolder = groupFolder;
+      if (memuPort && memuGroupFolder && markdown) {
+        try {
+          await fetch(`http://${memuHost}:${memuPort}/memorize`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              groupFolder: memuGroupFolder,
+              content: markdown,
+              sessionId: sessionId,
+            }),
+          });
+          log('Sent transcript to MemU for memory extraction');
+        } catch (memuErr) {
+          log(`MemU memorize failed (non-fatal): ${memuErr instanceof Error ? memuErr.message : String(memuErr)}`);
+        }
+      }
     } catch (err) {
       log(`Failed to archive transcript: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -408,6 +429,7 @@ async function runQuery(
         'TodoWrite', 'ToolSearch', 'Skill',
         'NotebookEdit',
         'mcp__nanoclaw__*',
+        'mcp__memu__*',
         'mcp__slack__*',
         'mcp__gmail__*'
       ],
@@ -447,9 +469,30 @@ async function runQuery(
             },
           },
         } : {}),
+        ...(sdkEnv.GOG_PROXY_PORT ? {
+          gog: {
+            command: 'node',
+            args: [mcpServerPath.replace('ipc-mcp-stdio.js', 'gog-mcp-stdio.js')],
+            env: {
+              GOG_PROXY_PORT: sdkEnv.GOG_PROXY_PORT || '',
+              GOG_PROXY_HOST: sdkEnv.GOG_PROXY_HOST || 'host.docker.internal',
+            },
+          },
+        } : {}),
+        ...(sdkEnv.MEMU_PROXY_PORT ? {
+          memu: {
+            command: 'node',
+            args: [mcpServerPath.replace('ipc-mcp-stdio.js', 'memu-mcp-stdio.js')],
+            env: {
+              MEMU_PROXY_PORT: sdkEnv.MEMU_PROXY_PORT || '',
+              MEMU_PROXY_HOST: sdkEnv.MEMU_PROXY_HOST || 'host.docker.internal',
+              NANOCLAW_GROUP_FOLDER: containerInput.groupFolder,
+            },
+          },
+        } : {}),
       },
       hooks: {
-        PreCompact: [{ hooks: [createPreCompactHook(containerInput.assistantName)] }],
+        PreCompact: [{ hooks: [createPreCompactHook(containerInput.assistantName, containerInput.groupFolder)] }],
       },
     }
   })) {
@@ -527,6 +570,48 @@ async function main(): Promise<void> {
   if (pending.length > 0) {
     log(`Draining ${pending.length} pending IPC messages into initial prompt`);
     prompt += '\n' + pending.join('\n');
+  }
+
+  // MemU: inject remembered context at session start
+  const memuPort = process.env.MEMU_PROXY_PORT;
+  const memuHost = process.env.MEMU_PROXY_HOST || 'host.docker.internal';
+  if (memuPort && containerInput.groupFolder) {
+    try {
+      const ctxResp = await fetch(`http://${memuHost}:${memuPort}/context`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          groupFolder: containerInput.groupFolder,
+          prompt: containerInput.prompt,
+        }),
+      });
+      if (ctxResp.ok) {
+        const ctx = await ctxResp.json() as {
+          behaviors: { content: string; category: string }[];
+          relevant: { content: string; category: string; score: number }[];
+        };
+        const parts: string[] = [];
+        if (ctx.behaviors.length > 0) {
+          parts.push('## Remembered behaviors (from past sessions)');
+          for (const m of ctx.behaviors) {
+            parts.push(`- ${m.content}`);
+          }
+        }
+        if (ctx.relevant.length > 0) {
+          parts.push('## Relevant memories');
+          for (const m of ctx.relevant) {
+            parts.push(`- [${m.category}] ${m.content}`);
+          }
+        }
+        if (parts.length > 0) {
+          const memoryBlock = parts.join('\n');
+          prompt = `<remembered-context>\n${memoryBlock}\n</remembered-context>\n\n${prompt}`;
+          log(`Injected ${ctx.behaviors.length} behavior + ${ctx.relevant.length} relevant memories into prompt`);
+        }
+      }
+    } catch (err) {
+      log(`MemU context injection failed (non-fatal): ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 
   // Query loop: run query → wait for IPC message → run new query → repeat

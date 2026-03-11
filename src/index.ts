@@ -4,12 +4,16 @@ import path from 'path';
 import {
   ASSISTANT_NAME,
   CREDENTIAL_PROXY_PORT,
+  GOG_PROXY_PORT,
   IDLE_TIMEOUT,
+  MEMU_PROXY_PORT,
   POLL_INTERVAL,
   TIMEZONE,
   TRIGGER_PATTERN,
 } from './config.js';
 import { startCredentialProxy } from './credential-proxy.js';
+import { startGogProxy } from './gog-proxy.js';
+import { startMemuProxy } from './memu-proxy.js';
 import './channels/index.js';
 import {
   getChannelFactory,
@@ -501,10 +505,18 @@ async function main(): Promise<void> {
     PROXY_BIND_HOST,
   );
 
+  // Start gog proxy (containers access host gog CLI through this)
+  const gogServer = await startGogProxy(GOG_PROXY_PORT, PROXY_BIND_HOST);
+
+  // Start MemU proxy (containers access agent memory through this)
+  const memuServer = await startMemuProxy(MEMU_PROXY_PORT, PROXY_BIND_HOST);
+
   // Graceful shutdown handlers
   const shutdown = async (signal: string) => {
     logger.info({ signal }, 'Shutdown signal received');
     proxyServer.close();
+    gogServer.close();
+    memuServer.close();
     await queue.shutdown(10000);
     for (const ch of channels) await ch.disconnect();
     process.exit(0);
