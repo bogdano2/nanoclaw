@@ -232,19 +232,14 @@ function promoteMemory(groupFolder: string, memoryId: string): void {
     const existing = fs.readFileSync(claudeMdPath, 'utf-8');
 
     if (existing.includes(memory.content)) {
-      db.prepare('UPDATE memories SET promoted = 1 WHERE id = ?').run(
-        memoryId,
-      );
+      db.prepare('UPDATE memories SET promoted = 1 WHERE id = ?').run(memoryId);
       return;
     }
 
-    const section =
-      '\n\n## Learned Behaviors (auto-promoted from memory)\n\n';
+    const section = '\n\n## Learned Behaviors (auto-promoted from memory)\n\n';
     const entry = `- ${memory.content}\n`;
 
-    if (
-      existing.includes('## Learned Behaviors (auto-promoted from memory)')
-    ) {
+    if (existing.includes('## Learned Behaviors (auto-promoted from memory)')) {
       const updated = existing.replace(
         '## Learned Behaviors (auto-promoted from memory)\n\n',
         `## Learned Behaviors (auto-promoted from memory)\n\n${entry}`,
@@ -280,9 +275,7 @@ async function retrieveMemories(
   const typeParams = types && types.length > 0 ? types : [];
 
   const candidates = db
-    .prepare(
-      `SELECT * FROM memories WHERE group_folder = ? ${typeFilter}`,
-    )
+    .prepare(`SELECT * FROM memories WHERE group_folder = ? ${typeFilter}`)
     .all(groupFolder, ...typeParams) as MemoryRow[];
 
   if (candidates.length === 0) return [];
@@ -421,9 +414,10 @@ async function memorizeTranscript(
           )
           .get(groupFolder, chunk, now) as { id: string } | undefined;
         if (row) {
-          db.prepare(
-            'UPDATE memory_chunks SET embedding = ? WHERE id = ?',
-          ).run(JSON.stringify(emb), row.id);
+          db.prepare('UPDATE memory_chunks SET embedding = ? WHERE id = ?').run(
+            JSON.stringify(emb),
+            row.id,
+          );
         }
       }
     });
@@ -641,11 +635,7 @@ export function startMemuProxy(
           case '/search': {
             const query = (body.query as string) || '';
             const limit = (body.limit as number) || 20;
-            const memories = await retrieveMemories(
-              groupFolder,
-              query,
-              limit,
-            );
+            const memories = await retrieveMemories(groupFolder, query, limit);
 
             // Also search transcript chunks via embeddings
             let chunks: Array<{
