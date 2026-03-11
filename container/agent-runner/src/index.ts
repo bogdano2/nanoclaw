@@ -431,6 +431,7 @@ async function runQuery(
         'NotebookEdit',
         'mcp__nanoclaw__*',
         'mcp__memu__*',
+        'mcp__reminders__*',
         'mcp__slack__*',
         'mcp__gmail__*'
       ],
@@ -488,6 +489,16 @@ async function runQuery(
               MEMU_PROXY_PORT: sdkEnv.MEMU_PROXY_PORT || '',
               MEMU_PROXY_HOST: sdkEnv.MEMU_PROXY_HOST || 'host.docker.internal',
               NANOCLAW_GROUP_FOLDER: containerInput.groupFolder,
+            },
+          },
+        } : {}),
+        ...(sdkEnv.REMINDERS_PROXY_PORT ? {
+          reminders: {
+            command: 'node',
+            args: [mcpServerPath.replace('ipc-mcp-stdio.js', 'reminders-mcp-stdio.js')],
+            env: {
+              REMINDERS_PROXY_PORT: sdkEnv.REMINDERS_PROXY_PORT || '',
+              REMINDERS_PROXY_HOST: sdkEnv.REMINDERS_PROXY_HOST || 'host.docker.internal',
             },
           },
         } : {}),

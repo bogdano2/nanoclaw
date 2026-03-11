@@ -16,6 +16,7 @@ import {
   GROUPS_DIR,
   IDLE_TIMEOUT,
   MEMU_PROXY_PORT,
+  REMINDERS_PROXY_PORT,
   TIMEZONE,
 } from './config.js';
 import { resolveGroupFolderPath, resolveGroupIpcPath } from './group-folder.js';
@@ -276,6 +277,10 @@ function buildContainerArgs(
   // Pass MemU proxy port so the container's memu MCP server can reach the host
   args.push('-e', `MEMU_PROXY_PORT=${MEMU_PROXY_PORT}`);
   args.push('-e', `MEMU_PROXY_HOST=${CONTAINER_HOST_GATEWAY}`);
+
+  // Pass Reminders proxy port so the container's reminders MCP server can reach the host
+  args.push('-e', `REMINDERS_PROXY_PORT=${REMINDERS_PROXY_PORT}`);
+  args.push('-e', `REMINDERS_PROXY_HOST=${CONTAINER_HOST_GATEWAY}`);
 
   // Runtime-specific args for host gateway resolution
   args.push(...hostGatewayArgs());

@@ -8,12 +8,14 @@ import {
   IDLE_TIMEOUT,
   MEMU_PROXY_PORT,
   POLL_INTERVAL,
+  REMINDERS_PROXY_PORT,
   TIMEZONE,
   TRIGGER_PATTERN,
 } from './config.js';
 import { startCredentialProxy } from './credential-proxy.js';
 import { startGogProxy } from './gog-proxy.js';
 import { startMemuProxy } from './memu-proxy.js';
+import { startRemindersProxy } from './reminders-proxy.js';
 import './channels/index.js';
 import {
   getChannelFactory,
@@ -511,12 +513,19 @@ async function main(): Promise<void> {
   // Start MemU proxy (containers access agent memory through this)
   const memuServer = await startMemuProxy(MEMU_PROXY_PORT, PROXY_BIND_HOST);
 
+  // Start Reminders proxy (containers access Apple Reminders through this)
+  const remindersServer = await startRemindersProxy(
+    REMINDERS_PROXY_PORT,
+    PROXY_BIND_HOST,
+  );
+
   // Graceful shutdown handlers
   const shutdown = async (signal: string) => {
     logger.info({ signal }, 'Shutdown signal received');
     proxyServer.close();
     gogServer.close();
     memuServer.close();
+    remindersServer.close();
     await queue.shutdown(10000);
     for (const ch of channels) await ch.disconnect();
     process.exit(0);
