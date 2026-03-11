@@ -729,7 +729,10 @@ const BD_PRIORITY_SQL = `
       ))))
   ))`;
 
-function bdTaskQuery(where: string, orderBy: string = 'computed_priority DESC'): string {
+function bdTaskQuery(
+  where: string,
+  orderBy: string = 'computed_priority DESC',
+): string {
   return `SELECT t.*, ${BD_PRIORITY_SQL} AS computed_priority FROM bd_tasks t WHERE ${where} ORDER BY ${orderBy}`;
 }
 
@@ -785,9 +788,9 @@ export function updateBdTask(
   >,
   reason?: string,
 ): void {
-  const current = db
-    .prepare('SELECT * FROM bd_tasks WHERE id = ?')
-    .get(id) as BdTask | undefined;
+  const current = db.prepare('SELECT * FROM bd_tasks WHERE id = ?').get(id) as
+    | BdTask
+    | undefined;
   if (!current) return;
 
   const now = new Date().toISOString();
@@ -840,16 +843,23 @@ export function updateBdTask(
   values.push(id);
 
   const txn = db.transaction(() => {
-    db.prepare(
-      `UPDATE bd_tasks SET ${fields.join(', ')} WHERE id = ?`,
-    ).run(...values);
+    db.prepare(`UPDATE bd_tasks SET ${fields.join(', ')} WHERE id = ?`).run(
+      ...values,
+    );
 
     const insertHistory = db.prepare(
       `INSERT INTO bd_task_history (task_id, field_changed, old_value, new_value, reason, changed_at)
        VALUES (?, ?, ?, ?, ?, ?)`,
     );
     for (const entry of historyEntries) {
-      insertHistory.run(id, entry.field, entry.oldVal, entry.newVal, reason ?? null, now);
+      insertHistory.run(
+        id,
+        entry.field,
+        entry.oldVal,
+        entry.newVal,
+        reason ?? null,
+        now,
+      );
     }
   });
   txn();
@@ -870,26 +880,20 @@ export function deleteBdTask(id: string): void {
 
 export function getTopBdTasks(limit: number = 20): BdTaskWithPriority[] {
   return db
-    .prepare(
-      bdTaskQuery("t.status NOT IN ('done','cancelled')") + ' LIMIT ?',
-    )
+    .prepare(bdTaskQuery("t.status NOT IN ('done','cancelled')") + ' LIMIT ?')
     .all(limit) as BdTaskWithPriority[];
 }
 
 export function getBdTasksByDeal(deal: string): BdTaskWithPriority[] {
   return db
-    .prepare(
-      bdTaskQuery("t.deal = ? AND t.status NOT IN ('done','cancelled')"),
-    )
+    .prepare(bdTaskQuery("t.deal = ? AND t.status NOT IN ('done','cancelled')"))
     .all(deal) as BdTaskWithPriority[];
 }
 
 export function getBdTasksByContact(contact: string): BdTaskWithPriority[] {
   return db
     .prepare(
-      bdTaskQuery(
-        "t.contact = ? AND t.status NOT IN ('done','cancelled')",
-      ),
+      bdTaskQuery("t.contact = ? AND t.status NOT IN ('done','cancelled')"),
     )
     .all(contact) as BdTaskWithPriority[];
 }
@@ -921,9 +925,7 @@ export function searchBdTasks(query: string): BdTaskWithPriority[] {
     .all(pattern, pattern, pattern, pattern, pattern) as BdTaskWithPriority[];
 }
 
-export function addBdTaskSignal(
-  signal: Omit<BdTaskSignal, 'id'>,
-): void {
+export function addBdTaskSignal(signal: Omit<BdTaskSignal, 'id'>): void {
   const txn = db.transaction(() => {
     db.prepare(
       `INSERT INTO bd_task_signals (task_id, signal_type, source, summary, weight, created_at)

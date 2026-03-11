@@ -520,10 +520,7 @@ export async function processTaskIpc(
       if (data.taskId) {
         const task = getBdTaskById(data.taskId);
         if (!task) {
-          logger.warn(
-            { taskId: data.taskId },
-            'BD task not found for update',
-          );
+          logger.warn({ taskId: data.taskId }, 'BD task not found for update');
           break;
         }
         if (!isMain && task.group_folder !== sourceGroup) {
