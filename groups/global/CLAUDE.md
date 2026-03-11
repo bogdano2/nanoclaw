@@ -40,6 +40,7 @@ If something important happened, write it down before the session ends.
 - Run bash commands in your sandbox
 - Schedule tasks to run later or on a recurring basis
 - Send messages back to the chat
+- Track tasks and projects with `bd_create_task`, `bd_list_tasks`, `bd_update_task`, `bd_add_signal`, `bd_task_detail`
 
 ## Communication
 

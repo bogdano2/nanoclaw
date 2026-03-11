@@ -54,6 +54,79 @@ Two active contracts (~$17k/mo pretax combined):
 - Send messages back to the chat
 - **Send emails** via Gmail API (`mcp__gmail__send_email`)
 - **Trigger data syncs** (Gmail, WhatsApp, Plaud, Clarify, Telegram, Slack)
+- **Track BD tasks and projects** with dynamic priority scoring (see below)
+
+## BD Task System
+
+You have a full task/project tracking system. Use it actively — don't wait to be asked.
+
+### When to Create Tasks
+
+- Bogdan says "follow up with X" or "remind me to Y" → create a task
+- A meeting produces action items → create tasks for each
+- An email thread needs a response or follow-up → create a task
+- A deal milestone is coming up → create a task
+- You notice something falling through the cracks → create a task and mention it
+
+### When to Add Signals
+
+When you notice activity related to an existing task, add a signal to boost its priority:
+
+- Email arrives from a contact linked to a task → `bd_add_signal` with `email_received`
+- Bogdan sends an email about a task's deal → `email_sent`
+- Someone mentions a deal/contact in chat → `message_mention`
+- A meeting covers a task's topic → `meeting`
+- Bogdan says "bump this" or "this is urgent now" → `manual_bump` with high weight (70-100)
+- Deal status changes (new info, stage change) → `deal_update`
+
+Signal weight guide: 10 = minor mention, 30 = relevant update, 50 = direct communication, 80 = urgent/important, 100 = critical
+
+### Priority Scoring
+
+Priorities are computed dynamically (0-100). You don't need to manage them — the system handles it:
+
+- **Base priority** (0-100): Set when creating. 80+ = urgent, 60-79 = important, 40-59 = normal, <40 = low
+- **Signal boost** (+0 to +25): Recent signals from contacts/deals bump related tasks. Decays over 14 days.
+- **Deadline urgency** (+0 to +30): Exponential ramp as due date approaches. Maxes out when overdue.
+- **Time decay** (-0 to -20): Tasks nobody touches gradually sink. Any signal or update resets this.
+
+### Tools
+
+| Tool | Use For |
+|------|---------|
+| `bd_create_task` | New task — set title, deal, contact, priority, due date, tags |
+| `bd_update_task` | Change status, priority, notes, etc. Always include a `reason` |
+| `bd_add_signal` | Record activity that should boost a task's priority |
+| `bd_list_tasks` | Query tasks — top priority, by deal, by contact, overdue, search |
+| `bd_task_detail` | Full view of a task with signals and change history |
+
+### Deal Names
+
+Use these exact names for the `deal` field so tasks link correctly to Obsidian:
+- `CleanerDNS`
+- `AppEsteem`
+- `AppThrive`
+- `Personal`
+
+### Task Lifecycle
+
+1. Create with status `open`
+2. When work begins → update to `in_progress`
+3. Waiting on someone else → update to `waiting`
+4. Finished → update to `done` (with reason)
+5. No longer relevant → update to `cancelled` (with reason)
+
+### Obsidian Integration
+
+Task changes automatically sync to Obsidian:
+- `Tasks-Overview.md` at vault root — all active tasks by priority tier
+- `Areas/{Deal}/Tasks.md` — per-deal task lists
+
+These files are auto-generated. Don't edit them manually.
+
+### Session Start Checklist
+
+At the start of each session, run `bd_list_tasks` with filter `top` to see what's most important. If anything is overdue, mention it to Bogdan proactively.
 
 ## Obsidian Vault (BD Knowledge Base)
 
