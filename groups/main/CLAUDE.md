@@ -116,6 +116,23 @@ Use these exact names for the `deal` field so tasks link correctly to Obsidian:
 4. Finished → update to `done` (with reason)
 5. No longer relevant → update to `cancelled` (with reason)
 
+### Apple Reminders Sync
+
+After creating or updating a BD task, automatically sync it to Apple Reminders if it meets *any* of these criteria:
+- Has a due date
+- Base priority >= 60 (important or urgent)
+- Status is `open` or `in_progress`
+
+Use `mcp__reminders__reminders_add` with:
+- `title`: task title
+- `list`: deal name (e.g., "CleanerDNS", "AppEsteem") — creates the list if it doesn't exist
+- `due`: due date if set
+- `notes`: brief context (contact, what's needed)
+
+When a task is completed or cancelled, use `mcp__reminders__reminders_complete` to mark it done in Reminders too.
+
+When updating a task's status to `done` or `cancelled`, always check if it has a corresponding reminder and complete it.
+
 ### Obsidian Integration
 
 Task changes automatically sync to Obsidian:
@@ -181,7 +198,7 @@ tail -20 /workspace/extra/sync-logs/gmail.log            # Gmail sync log
 ```
 
 ### Sync Schedule
-- All syncs run automatically daily at 6:00 AM Central
+- All syncs (Gmail, WhatsApp, Plaud, Clarify, Telegram, Slack) run automatically every 3 hours
 - Vault auto-commits and pushes to GitHub after each sync
 
 ## Clarify CRM

@@ -52,6 +52,13 @@ export interface ContainerOutput {
   result: string | null;
   newSessionId?: string;
   error?: string;
+  usage?: {
+    costUsd: number;
+    inputTokens?: number;
+    outputTokens?: number;
+    turns?: number;
+    durationMs?: number;
+  };
 }
 
 interface VolumeMount {
@@ -196,7 +203,8 @@ function buildVolumeMounts(
     group.folder,
     'agent-runner-src',
   );
-  if (!fs.existsSync(groupAgentRunnerDir) && fs.existsSync(agentRunnerSrc)) {
+  if (fs.existsSync(agentRunnerSrc)) {
+    // Always sync source to session dir so container picks up code changes
     fs.cpSync(agentRunnerSrc, groupAgentRunnerDir, { recursive: true });
   }
   mounts.push({

@@ -27,7 +27,7 @@ if [ "$waited" -gt 0 ]; then
   echo "[$(date -Iseconds)] start.sh: Docker ready after ${waited}s" >> "$LOG"
 fi
 
-/opt/homebrew/bin/node /Users/Shared/nanoclaw/dist/index.js
+/opt/homebrew/bin/node --max-old-space-size=8192 /Users/Shared/nanoclaw/dist/index.js
 EXIT_CODE=$?
 
 if [ "$EXIT_CODE" -ne 0 ]; then

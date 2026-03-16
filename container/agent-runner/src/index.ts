@@ -33,6 +33,13 @@ interface ContainerOutput {
   status: 'success' | 'error';
   result: string | null;
   newSessionId?: string;
+  usage?: {
+    costUsd: number;
+    inputTokens?: number;
+    outputTokens?: number;
+    turns?: number;
+    durationMs?: number;
+  };
   error?: string;
 }
 
@@ -528,12 +535,41 @@ async function runQuery(
 
     if (message.type === 'result') {
       resultCount++;
-      const textResult = 'result' in message ? (message as { result?: string }).result : null;
-      log(`Result #${resultCount}: subtype=${message.subtype}${textResult ? ` text=${textResult.slice(0, 200)}` : ''}`);
+      const resultMsg = message as Record<string, unknown>;
+      const textResult = (resultMsg.result as string) || null;
+      const costUsd = resultMsg.total_cost_usd as number | undefined;
+      const usage = resultMsg.usage as Record<string, number> | undefined;
+      const modelUsage = resultMsg.modelUsage as Record<string, { inputTokens?: number; outputTokens?: number; costUSD?: number }> | undefined;
+      const numTurns = resultMsg.num_turns as number | undefined;
+      const durationMs = resultMsg.duration_ms as number | undefined;
+
+      // Sum tokens across all models if modelUsage is available
+      let inputTokens: number | undefined;
+      let outputTokens: number | undefined;
+      if (modelUsage) {
+        inputTokens = 0;
+        outputTokens = 0;
+        for (const m of Object.values(modelUsage)) {
+          inputTokens += m.inputTokens || 0;
+          outputTokens += m.outputTokens || 0;
+        }
+      } else if (usage) {
+        inputTokens = usage.input_tokens ?? usage.inputTokens;
+        outputTokens = usage.output_tokens ?? usage.outputTokens;
+      }
+
+      log(`Result #${resultCount}: subtype=${message.subtype} cost=$${costUsd?.toFixed(4) || '?'} tokens=${inputTokens || '?'}/${outputTokens || '?'}${textResult ? ` text=${textResult.slice(0, 200)}` : ''}`);
       writeOutput({
         status: 'success',
-        result: textResult || null,
-        newSessionId
+        result: textResult,
+        newSessionId,
+        usage: costUsd != null ? {
+          costUsd,
+          inputTokens,
+          outputTokens,
+          turns: numTurns,
+          durationMs,
+        } : undefined,
       });
     }
   }

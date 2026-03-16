@@ -21,8 +21,7 @@ import { BdTaskWithPriority } from './types.js';
 
 // Resolve vault path (supports ~)
 const VAULT_PATH =
-  process.env.OBSIDIAN_VAULT_PATH ||
-  path.join(os.homedir(), 'obsidian-vault');
+  process.env.OBSIDIAN_VAULT_PATH || path.join(os.homedir(), 'obsidian-vault');
 
 function priorityLabel(score: number): string {
   if (score >= 80) return '🔴';
@@ -52,12 +51,12 @@ function formatTask(t: BdTaskWithPriority, includeDetail: boolean): string {
   const pri = Math.round(t.computed_priority);
   const icon = priorityLabel(pri);
   const status = statusEmoji(t.status);
-  const due = t.due_date
-    ? ` 📅 ${t.due_date.split('T')[0]}`
-    : '';
+  const due = t.due_date ? ` 📅 ${t.due_date.split('T')[0]}` : '';
   const contact = t.contact ? ` — ${t.contact}` : '';
   const tags = t.tags
-    ? ` ${JSON.parse(t.tags).map((tag: string) => `#${tag}`).join(' ')}`
+    ? ` ${JSON.parse(t.tags)
+        .map((tag: string) => `#${tag}`)
+        .join(' ')}`
     : '';
 
   let line = `- ${status} ${icon} **${t.title}** (${pri})${contact}${due}${tags}`;
@@ -196,7 +195,10 @@ tags: [tasks, ${deal.toLowerCase()}, auto-generated]
  */
 export function regenerateBdTaskMarkdown(): void {
   if (!fs.existsSync(VAULT_PATH)) {
-    logger.debug({ vaultPath: VAULT_PATH }, 'Obsidian vault not found, skipping markdown generation');
+    logger.debug(
+      { vaultPath: VAULT_PATH },
+      'Obsidian vault not found, skipping markdown generation',
+    );
     return;
   }
 

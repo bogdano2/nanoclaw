@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "clarify-appthrive": {
+      "baseUrl": "https://api.clarify.ai/mcp"
+    }
+  },
+  "imports": []
+}

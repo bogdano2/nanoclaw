@@ -15,6 +15,7 @@ import {
   getTaskById,
   updateBdTask,
   updateTask,
+  storeMessageDirect,
 } from './db.js';
 import { isValidGroupFolder } from './group-folder.js';
 import { logger } from './logger.js';
@@ -102,6 +103,24 @@ export function startIpcWatcher(deps: IpcDeps): void {
                     'Unauthorized IPC message attempt blocked',
                   );
                 }
+              } else if (data.type === 'trigger_agent' && data.chatJid && data.prompt) {
+                // Insert a synthetic message so the message loop triggers the agent
+                const msgId = `trigger-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+                const timestamp = new Date().toISOString();
+                storeMessageDirect({
+                  id: msgId,
+                  chat_jid: data.chatJid,
+                  sender: data.chatJid,
+                  sender_name: 'System',
+                  content: data.prompt,
+                  timestamp,
+                  is_from_me: true,
+                  is_bot_message: false,
+                });
+                logger.info(
+                  { chatJid: data.chatJid, sourceGroup },
+                  'Agent trigger queued via synthetic message',
+                );
               }
               fs.unlinkSync(filePath);
             } catch (err) {

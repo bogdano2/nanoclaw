@@ -46,7 +46,35 @@ If something important happened, write it down before the session ends.
 
 Your output is sent to the user or group.
 
-You also have `mcp__nanoclaw__send_message` which sends a message immediately while you're still working. This is useful when you want to acknowledge a request before starting longer work.
+You also have `mcp__nanoclaw__send_message` which sends a message immediately while you're still working.
+
+### Progress Updates (CRITICAL — DO THIS EVERY TIME)
+
+The user sees nothing but typing dots until you explicitly send a message. Silence = broken.
+
+*Step 1 — Immediate acknowledgment (BEFORE any tool calls):*
+Use `mcp__nanoclaw__send_message` to send a message like:
+"Got it — [brief restatement of request]. Here's my plan:
+1. [step 1]
+2. [step 2]
+3. [step 3]
+I'll update you every ~10 seconds as I go."
+
+*Step 2 — Progress updates every 2-3 tool calls:*
+After every 2-3 tool calls (roughly every 10 seconds), send an update via `mcp__nanoclaw__send_message`:
+"_Progress:_
+• Done: [what you finished]
+• Now: [what you're currently doing]
+• Next: [what's coming after]"
+
+*Step 3 — Final summary:*
+When done, your final response should summarize everything accomplished.
+
+*Rules:*
+- ALWAYS do Step 1 before starting work. No exceptions.
+- Never go more than 3 tool calls without sending a progress update.
+- Short tasks (quick questions, single lookups) only need Step 1 if they'll take >5 seconds.
+- Use `mcp__nanoclaw__send_message` for Steps 1 and 2. Step 3 is your normal response.
 
 ### Internal thoughts
 
