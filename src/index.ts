@@ -230,9 +230,10 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
         if (result.usage) {
           const u = result.usage;
           const cost = `$${u.costUsd.toFixed(4)}`;
-          const tokens = u.inputTokens && u.outputTokens
-            ? ` · ${Math.round((u.inputTokens + u.outputTokens) / 1000)}k tokens`
-            : '';
+          const tokens =
+            u.inputTokens && u.outputTokens
+              ? ` · ${Math.round((u.inputTokens + u.outputTokens) / 1000)}k tokens`
+              : '';
           const duration = u.durationMs
             ? ` · ${Math.round(u.durationMs / 1000)}s`
             : '';

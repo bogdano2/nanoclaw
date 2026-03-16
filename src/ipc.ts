@@ -103,7 +103,11 @@ export function startIpcWatcher(deps: IpcDeps): void {
                     'Unauthorized IPC message attempt blocked',
                   );
                 }
-              } else if (data.type === 'trigger_agent' && data.chatJid && data.prompt) {
+              } else if (
+                data.type === 'trigger_agent' &&
+                data.chatJid &&
+                data.prompt
+              ) {
                 // Insert a synthetic message so the message loop triggers the agent
                 const msgId = `trigger-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
                 const timestamp = new Date().toISOString();
