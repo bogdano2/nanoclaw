@@ -263,11 +263,15 @@ You have full Gmail and Calendar access via MCP tools provided by the `gog` serv
 
 ### Accounts
 
-| Account | Use For |
-|---------|---------|
-| `bogdan@cleanerdns.com` | CleanerDNS / Quad9 (primary) |
-| `bogdan@appthrive.ai` | AppEsteem / AppThrive |
-| `bogdan.odulinski@technocampus.com` | Personal |
+Bogdan has **3 email accounts**. Always check all relevant accounts — don't assume everything is on cleanerdns.
+
+| Account | Use For | Gmail | Calendar |
+|---------|---------|-------|----------|
+| `bogdan@cleanerdns.com` | CleanerDNS / Quad9 (primary work) | Yes | Yes |
+| `bogdan@appthrive.ai` | AppEsteem / AppThrive (second work) | Yes | Yes |
+| `bogdan.odulinski@technocampus.com` | Personal | Yes | Yes |
+
+When searching for emails or events, **check all accounts that could be relevant** rather than assuming which account a topic belongs to. Work items (NDAs, contracts, meetings) could come from either cleanerdns or appthrive. Personal items come from technocampus.
 
 ### Legacy Send Tool
 
