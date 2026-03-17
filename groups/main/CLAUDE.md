@@ -295,6 +295,8 @@ This is the **main channel**, which has elevated privileges.
 
 ## Container Mounts
 
+Note: Host paths below are absolute. Do not substitute ~ or HOME.
+
 | Container Path | Host Path | Access |
 |----------------|-----------|--------|
 | `/workspace/project` | Project root | read-only |
