@@ -157,7 +157,8 @@ Areas/
 │   ├── Contacts/     — one note per person (from Clarify CRM)
 │   ├── Deals/Active/ and Deals/Archive/
 │   ├── Emails/       — synced Gmail threads
-│   ├── Meetings/     — Plaud recording transcripts
+│   ├── Meetings/     — Plaud meeting summaries (transcripts in .transcripts/)
+│   │   └── .transcripts/ — raw transcript .txt files (loaded on demand)
 │   ├── WhatsApp/     — WhatsApp conversation history
 │   ├── Telegram/     — Telegram DM history
 │   └── Slack/        — Slack DMs and channel history
@@ -168,12 +169,13 @@ Areas/
 
 ### Searching the Vault
 - Use `grep -r` or `find` to search across notes
-- Meeting notes have frontmatter with area, type, date, attendees, companies
-- Company/Contact notes have frontmatter with clarify_id, website, industry
+- Meeting notes have frontmatter with area, type, date, attendees, companies, references (entity slugs)
+- Company/Contact notes have frontmatter with name, slug, clarify_id, source
 - Deal notes track status, value, close_date
+- When you need the full transcript of a meeting, read the file at the `transcript_path` in the frontmatter. Don't load transcripts unless you specifically need verbatim quotes or detailed context — the summary section has the key information.
 
 ### Note Templates
-- **Meeting**: Summary / Key Points / Action Items / Follow-Up Date / Full Transcript
+- **Meeting**: Summary / Key Points / Action Items / Follow-Up Date / Transcript reference (full transcript in .transcripts/)
 - **Company**: Summary / Key Contacts / Why Us / Deal / Meeting History
 - **Contact**: Bio / Interaction History / Meeting History
 - **Deal**: Summary / Companies & Contacts / Timeline / Next Steps
