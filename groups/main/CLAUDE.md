@@ -235,18 +235,43 @@ You have access to Slack tools (`mcp__slack__*`) that let you read and search Bo
 - The cache persists at `/workspace/group/slack/slack.db`
 - If you get an auth error, tell Bogdan to re-extract xoxc token and d cookie from Slack desktop
 
-## Gmail (Send)
+## Gmail & Calendar (gog MCP)
 
-You can send emails from Bogdan's Gmail (bogdan@cleanerdns.com) using `mcp__gmail__send_email`.
+You have full Gmail and Calendar access via MCP tools provided by the `gog` server. **Do NOT run `gog` directly via bash** — it won't work inside the container. Always use the MCP tools.
 
-| Parameter | Description |
-|-----------|-------------|
-| `to` | Recipient email(s), comma-separated |
-| `subject` | Subject line |
-| `body` | Plain text body |
-| `cc` | (optional) CC email(s), comma-separated |
+### Gmail Tools
 
-Use this for: sending follow-ups, introductions, meeting summaries, status updates, or any email Bogdan asks you to send.
+| Tool | Purpose |
+|------|---------|
+| `mcp__gog__gmail_search` | Search threads: `account`, `query` (Gmail syntax), `max` |
+| `mcp__gog__gmail_get` | Read a message by ID: `account`, `id` |
+| `mcp__gog__gmail_thread` | Read full thread: `account`, `id` |
+| `mcp__gog__gmail_send` | Send email: `account`, `to`, `subject`, `body`, `cc` (optional) |
+
+### Calendar Tools
+
+| Tool | Purpose |
+|------|---------|
+| `mcp__gog__calendar_list` | List upcoming events: `account`, `max` |
+| `mcp__gog__calendar_search` | Search events: `account`, `query` |
+
+### Generic
+
+| Tool | Purpose |
+|------|---------|
+| `mcp__gog__gog_command` | Any other gog command: `args` (array of strings) |
+
+### Accounts
+
+| Account | Use For |
+|---------|---------|
+| `bogdan@cleanerdns.com` | CleanerDNS / Quad9 (primary) |
+| `bogdan@appthrive.ai` | AppEsteem / AppThrive |
+| `bogdan.odulinski@technocampus.com` | Personal |
+
+### Legacy Send Tool
+
+`mcp__gmail__send_email` also works for sending from bogdan@cleanerdns.com (uses a separate OAuth flow).
 
 ## Communication
 
