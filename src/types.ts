@@ -112,6 +112,7 @@ export interface BdTask {
   updated_at: string;
   completed_at: string | null;
   last_signal_at: string | null;
+  clarify_task_id: string | null;
 }
 
 export interface BdTaskWithPriority extends BdTask {

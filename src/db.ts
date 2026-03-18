@@ -195,6 +195,18 @@ function createSchema(database: Database.Database): void {
   } catch {
     /* columns already exist */
   }
+
+  // Add clarify_task_id column for Clarify CRM task sync
+  try {
+    database.exec(
+      `ALTER TABLE bd_tasks ADD COLUMN clarify_task_id TEXT`,
+    );
+    database.exec(
+      `CREATE INDEX IF NOT EXISTS idx_bd_tasks_clarify ON bd_tasks(clarify_task_id)`,
+    );
+  } catch {
+    /* column already exists */
+  }
 }
 
 export function initDatabase(): void {

@@ -519,6 +519,7 @@ export async function processTaskIpc(
           tags: data.tags ?? null,
           parent_task_id: data.parent_task_id ?? null,
           notes: data.notes ?? null,
+          clarify_task_id: null,
           created_at: new Date().toISOString(),
         });
         logger.info(
