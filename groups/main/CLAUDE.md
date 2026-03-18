@@ -281,7 +281,15 @@ When searching for emails or events, **check all accounts that could be relevant
 
 Your output is sent to the user or group.
 
-You also have `mcp__nanoclaw__send_message` which sends a message immediately while you're still working. This is useful when you want to acknowledge a request before starting longer work.
+You also have `mcp__nanoclaw__send_message` which sends a message immediately while you're still working. **Use it proactively** — every time you start a distinct step, send a brief status so Bogdan can see progress:
+
+- Searching emails → _"Checking emails..."_
+- Reading vault notes → _"Reviewing meeting notes..."_
+- Querying calendar → _"Checking calendar..."_
+- Creating/updating tasks → _"Updating tasks..."_
+- Compiling a response → _"Putting it all together..."_
+
+Don't batch — send each status as you begin that step. This way Bogdan always sees what you're doing rather than waiting in silence.
 
 ### Internal thoughts
 
