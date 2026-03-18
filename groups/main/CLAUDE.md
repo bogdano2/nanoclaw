@@ -90,6 +90,15 @@ Priorities are computed dynamically (0-100). You don't need to manage them — t
 - **Deadline urgency** (+0 to +30): Exponential ramp as due date approaches. Maxes out when overdue.
 - **Time decay** (-0 to -20): Tasks nobody touches gradually sink. Any signal or update resets this.
 
+### Creating Tasks — Deadlines and Specificity
+
+When creating tasks from meetings, emails, or chats:
+
+1. **Look up real deadlines.** If a task mentions an event (RSA, CloudFest, board meeting, trial expiry), check the calendar for the actual date and set `due_date` *before* the event — not on or after it. Leave-behinds for a conference need to be done before the conference starts.
+2. **Break into specific deliverables.** "Prepare materials" is not a task — "Draft NOH one-pager PDF", "Draft NOD product sheet", "Print 50 copies" are tasks. Each should be actionable on its own.
+3. **Match priority to timeline.** If something is due this week, it's 80+ priority. If the meeting notes say "before RSA" and RSA is in 3 days, that's priority 90+ with a due date of tomorrow.
+4. **Don't genericize what the source spelled out.** If the meeting notes list specific action items with specific deliverables, create tasks that match — don't summarize them into one vague task.
+
 ### Tools
 
 | Tool | Use For |
