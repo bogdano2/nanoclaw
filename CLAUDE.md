@@ -13,7 +13,7 @@ IMPORTANT: This project runs from /Users/Shared/, NOT from ~/. Never assume HOME
 | What | Path |
 |------|------|
 | NanoClaw | /Users/Shared/nanoclaw/ |
-| BD Brain Sync | /Users/bogdan/bd-brain-sync/ |
+| Memory Defender Sync | /Users/bogdan/bd-brain-sync/ |
 | Obsidian Vault | /Users/bogdan/obsidian-vault/ |
 | Sync Scripts (canonical) | /Users/bogdan/bd-brain-sync/scripts/ |
 | Slug Registry | /Users/bogdan/bd-brain-sync/config/slug_registry.json |
