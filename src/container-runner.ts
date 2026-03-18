@@ -7,6 +7,7 @@ import fs from 'fs';
 import path from 'path';
 
 import {
+  CLARIFY_PROXY_PORT,
   CONTAINER_IMAGE,
   CONTAINER_MAX_OUTPUT_SIZE,
   CONTAINER_TIMEOUT,
@@ -289,6 +290,10 @@ function buildContainerArgs(
   // Pass Reminders proxy port so the container's reminders MCP server can reach the host
   args.push('-e', `REMINDERS_PROXY_PORT=${REMINDERS_PROXY_PORT}`);
   args.push('-e', `REMINDERS_PROXY_HOST=${CONTAINER_HOST_GATEWAY}`);
+
+  // Pass Clarify proxy port so the container's clarify MCP server can reach the host
+  args.push('-e', `CLARIFY_PROXY_PORT=${CLARIFY_PROXY_PORT}`);
+  args.push('-e', `CLARIFY_PROXY_HOST=${CONTAINER_HOST_GATEWAY}`);
 
   // Runtime-specific args for host gateway resolution
   args.push(...hostGatewayArgs());

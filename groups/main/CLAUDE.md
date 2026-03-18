@@ -286,6 +286,39 @@ When searching for emails or events, **check all accounts that could be relevant
 
 `mcp__gmail__send_email` also works for sending from bogdan@cleanerdns.com (uses a separate OAuth flow).
 
+## Clarify CRM
+
+You have direct access to Clarify CRM via MCP tools. Two workspaces: `cleanerdns` (CleanerDNS/Quad9) and `appthrive` (AppThrive/AppEsteem).
+
+### Tools
+
+| Tool | Purpose |
+|------|---------|
+| `mcp__clarify__clarify_query` | SQL query against Clarify: company, person, deal, task, meeting |
+| `mcp__clarify__clarify_create` | Create a record (company, person, deal, task) with relationships |
+| `mcp__clarify__clarify_update` | Update a record by ID (status, labels, fields) |
+| `mcp__clarify__clarify_comment` | Add a note to a record timeline (company, deal, meeting) |
+| `mcp__clarify__clarify_schema` | Get entity schema (fields, types, relationships) |
+
+### Company Labels
+
+Companies in Clarify are tagged with relationship labels:
+- **Partner** — shares data/feeds with us (e.g., Threat Intelligence Providers)
+- **Customer** — paying customer
+- **Prospect** — potential customer in pipeline
+- **Partner/Prospect** — partner exploring a deal (e.g., BitSight)
+- **Partner/Customer** — partner who is also a customer
+
+When you identify a company's relationship, update their labels in Clarify using `clarify_update`.
+
+### Workspace Mapping
+
+| Area | Workspace |
+|------|-----------|
+| CleanerDNS | `cleanerdns` |
+| AppThrive | `appthrive` |
+| AppEsteem | `appthrive` |
+
 ## Communication
 
 Your output is sent to the user or group.

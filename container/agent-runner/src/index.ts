@@ -509,6 +509,16 @@ async function runQuery(
             },
           },
         } : {}),
+        ...(sdkEnv.CLARIFY_PROXY_PORT ? {
+          clarify: {
+            command: 'node',
+            args: [mcpServerPath.replace('ipc-mcp-stdio.js', 'clarify-mcp-stdio.js')],
+            env: {
+              CLARIFY_PROXY_PORT: sdkEnv.CLARIFY_PROXY_PORT || '',
+              CLARIFY_PROXY_HOST: sdkEnv.CLARIFY_PROXY_HOST || 'host.docker.internal',
+            },
+          },
+        } : {}),
       },
       hooks: {
         PreCompact: [{ hooks: [createPreCompactHook(containerInput.assistantName, containerInput.groupFolder)] }],
