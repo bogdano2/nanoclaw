@@ -284,7 +284,7 @@ Your output is sent to the user or group.
 You also have `mcp__nanoclaw__send_message` which sends a message immediately while you're still working. **Use it proactively** — every time you start a distinct step, send a brief status so Bogdan can see progress:
 
 - Searching emails → _"Checking cleanerdns emails..."_, _"Checking appthrive emails..."_
-- Reading vault notes → _"Reviewing CleanerDNS meeting notes..."_
+- Reading vault notes → _"Reviewing 03-17 DNS Change Monitoring meeting..."_
 - Querying calendar → _"Checking cleanerdns calendar..."_
 - Checking messages → _"Checking Slack DMs..."_, _"Checking WhatsApp..."_, _"Checking Signal..."_
 - Creating/updating tasks → _"Updating CleanerDNS tasks..."_
