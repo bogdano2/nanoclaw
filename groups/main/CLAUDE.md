@@ -283,13 +283,14 @@ Your output is sent to the user or group.
 
 You also have `mcp__nanoclaw__send_message` which sends a message immediately while you're still working. **Use it proactively** — every time you start a distinct step, send a brief status so Bogdan can see progress:
 
-- Searching emails → _"Checking emails..."_
-- Reading vault notes → _"Reviewing meeting notes..."_
-- Querying calendar → _"Checking calendar..."_
-- Creating/updating tasks → _"Updating tasks..."_
+- Searching emails → _"Checking cleanerdns emails..."_, _"Checking appthrive emails..."_
+- Reading vault notes → _"Reviewing CleanerDNS meeting notes..."_
+- Querying calendar → _"Checking cleanerdns calendar..."_
+- Checking messages → _"Checking Slack DMs..."_, _"Checking WhatsApp..."_, _"Checking Signal..."_
+- Creating/updating tasks → _"Updating CleanerDNS tasks..."_
 - Compiling a response → _"Putting it all together..."_
 
-Don't batch — send each status as you begin that step. This way Bogdan always sees what you're doing rather than waiting in silence.
+Be specific — include the area (CleanerDNS, AppThrive, Personal), the email account, the messaging channel (Slack, WhatsApp, Signal, Telegram), or the meeting name whenever possible. Don't batch — send each status as you begin that step.
 
 ### Internal thoughts
 
