@@ -50,7 +50,7 @@ Deal names for the `deal` field: `CleanerDNS`, `AppEsteem`, `AppThrive`, `Person
 
 Task lifecycle: `open` → `in_progress` → `waiting` → `done` / `cancelled` (always include a reason)
 
-When creating/completing BD tasks with a deal or contact, also sync to Clarify: create a matching Clarify task (`clarify_create` entity "task") linked to the company/deal, or update its status (`clarify_update`). Check Clarify for existing tasks that should become BD tasks.
+BD tasks with a deal or contact are automatically synced to Clarify tasks by the sync pipeline — don't create Clarify tasks directly to avoid duplicates.
 
 At session start, run `bd_list_tasks` with filter `top`. If anything is overdue, mention it proactively.
 
