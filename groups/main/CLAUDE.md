@@ -176,12 +176,30 @@ Areas/
 └── Personal/         — non-BD contacts
 ```
 
-### Searching the Vault
-- Use `grep -r` or `find` to search across notes
-- Meeting notes have frontmatter with area, type, date, attendees, companies, references (entity slugs)
-- Company/Contact notes have frontmatter with name, slug, clarify_id, source
-- Deal notes track status, value, close_date
-- When you need the full transcript of a meeting, read the file at the `transcript_path` in the frontmatter. Don't load transcripts unless you specifically need verbatim quotes or detailed context — the summary section has the key information.
+### Searching the Vault — Brain Index
+
+A reverse index at `/workspace/extra/obsidian-vault/.brain/reverse-index.json` links every entity to its communications. **Prefer brain_query for entity lookups, relationships, stale detection, and timelines.** Fall back to `grep` only for free-text content search within file bodies.
+
+| Command | Purpose |
+|---------|---------|
+| `brain_query.py lookup <slug>` | Full entity record with emails, meetings, contacts, metadata |
+| `brain_query.py search <query>` | Search entity names and file paths (substring match) |
+| `brain_query.py stale --days N --limit N` | Entities with no contact in N+ days |
+| `brain_query.py stats` | Overview: entity counts, top connected, stalest |
+| `brain_query.py related <slug> --depth N` | Co-mentioned entities (shared communications) |
+| `brain_query.py timeline <slug> --limit N` | All communications for an entity, newest first |
+
+Run via: `python3 /workspace/extra/obsidian-vault/.brain/brain_query.py <subcommand>`
+
+**Common queries:**
+- "What do we know about Whisper?" → `brain_query.py lookup whisper`
+- "Who haven't I talked to in 30 days?" → `brain_query.py stale --days 30`
+- "Show me everything related to Joel Esler" → `brain_query.py related joel-esler`
+- "Recent activity with Infoblox" → `brain_query.py timeline infoblox`
+- "Quick BD overview" → `brain_query.py stats`
+
+Meeting notes have frontmatter with area, type, date, attendees, companies, meeting_type (internal/external/partner/customer).
+- When you need the full transcript of a meeting, read the file directly. Don't load transcripts unless you specifically need verbatim quotes — the summary section has the key information.
 
 ### Note Templates
 - **Meeting**: Summary / Key Points / Action Items / Follow-Up Date / Transcript reference (full transcript in .transcripts/)
