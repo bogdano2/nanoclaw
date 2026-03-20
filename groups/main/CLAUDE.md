@@ -73,7 +73,7 @@ Run via: `python3 /workspace/extra/obsidian-vault/.brain/brain_query.py <subcomm
 
 Examples: `lookup whisper`, `stale --days 30`, `related joel-esler`, `timeline infoblox`, `stats`
 
-Don't load full transcripts unless you need verbatim quotes — the summary section has the key information.
+Use summaries for status/overview questions. But when Bogdan asks about the specifics of what someone said, the tone of a conversation, or exact terms/conditions discussed, always load the full transcript or email body — don't rely on the summary alone.
 
 ## Data Sync
 
