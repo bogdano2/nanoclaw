@@ -44,7 +44,7 @@ Use the task system actively — don't wait to be asked. Create tasks when: Bogd
 | `bd_list_tasks` | Query tasks — top priority, by deal, by contact, overdue, search |
 | `bd_task_detail` | Full view of a task with signals and change history |
 
-Sync important tasks to Apple Reminders (`mcp__reminders__*`) — see `docs/bd-task-reference.md` for sync rules.
+Sync to Apple Reminders (`mcp__reminders__*`) if task has a due date OR priority >= 60. Complete the reminder when task is done/cancelled.
 
 Deal names for the `deal` field: `CleanerDNS`, `AppEsteem`, `AppThrive`, `Personal`
 
