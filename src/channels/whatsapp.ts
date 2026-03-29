@@ -1,4 +1,5 @@
 import { exec } from 'child_process';
+import dns from 'dns/promises';
 import fs from 'fs';
 import path from 'path';
 
@@ -29,6 +30,11 @@ import { registerChannel, ChannelOpts } from './registry.js';
 
 const GROUP_SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
+// Reconnection backoff: starts at 2s, doubles each attempt, caps at 2 hours
+const RECONNECT_BASE_MS = 2_000;
+const RECONNECT_MAX_MS = 2 * 60 * 60 * 1000; // 2 hours
+const CONNECTIVITY_CHECK_INTERVAL_MS = 10_000; // poll every 10s when waiting for network
+
 export interface WhatsAppChannelOpts {
   onMessage: OnInboundMessage;
   onChatMetadata: OnChatMetadata;
@@ -44,6 +50,15 @@ export class WhatsAppChannel implements Channel {
   private outgoingQueue: Array<{ jid: string; text: string }> = [];
   private flushing = false;
   private groupSyncTimerStarted = false;
+
+  // Cached auth state and signal key store — reused across reconnections
+  // to avoid leaking in-memory caches.  Initialized once in the first
+  // connectInternal() call.
+  private authState: Awaited<ReturnType<typeof useMultiFileAuthState>> | null =
+    null;
+  private cachedKeys: ReturnType<typeof makeCacheableSignalKeyStore> | null =
+    null;
+  private reconnectAttempts = 0;
 
   private opts: WhatsAppChannelOpts;
 
@@ -70,7 +85,18 @@ export class WhatsAppChannel implements Channel {
       this.sock.end(undefined);
     }
 
-    const { state, saveCreds } = await useMultiFileAuthState(authDir);
+    // Reuse auth state across reconnections.  useMultiFileAuthState() and
+    // makeCacheableSignalKeyStore() each allocate in-memory caches backed
+    // by the 870+ auth files on disk.  Recreating them every ~15 min
+    // reconnect cycle leaked hundreds of MB over days.
+    if (!this.authState) {
+      this.authState = await useMultiFileAuthState(authDir);
+      this.cachedKeys = makeCacheableSignalKeyStore(
+        this.authState.state.keys,
+        logger,
+      );
+    }
+    const { state, saveCreds } = this.authState;
 
     const { version } = await fetchLatestWaWebVersion({}).catch((err) => {
       logger.warn(
@@ -83,7 +109,7 @@ export class WhatsAppChannel implements Channel {
       version,
       auth: {
         creds: state.creds,
-        keys: makeCacheableSignalKeyStore(state.keys, logger),
+        keys: this.cachedKeys!,
       },
       printQRInTerminal: false,
       logger,
@@ -119,21 +145,14 @@ export class WhatsAppChannel implements Channel {
         );
 
         if (shouldReconnect) {
-          logger.info('Reconnecting...');
-          this.connectInternal().catch((err) => {
-            logger.error({ err }, 'Failed to reconnect, retrying in 5s');
-            setTimeout(() => {
-              this.connectInternal().catch((err2) => {
-                logger.error({ err: err2 }, 'Reconnection retry failed');
-              });
-            }, 5000);
-          });
+          this.scheduleReconnect();
         } else {
           logger.info('Logged out. Run /setup to re-authenticate.');
           process.exit(0);
         }
       } else if (connection === 'open') {
         this.connected = true;
+        this.reconnectAttempts = 0; // Reset backoff on successful connection
         logger.info('Connected to WhatsApp');
 
         // Announce availability so WhatsApp relays subsequent presence updates (typing indicators)
@@ -253,6 +272,48 @@ export class WhatsAppChannel implements Channel {
         }
       }
     });
+  }
+
+  private scheduleReconnect(): void {
+    this.reconnectAttempts++;
+    const delayMs = Math.min(
+      RECONNECT_BASE_MS * Math.pow(2, this.reconnectAttempts - 1),
+      RECONNECT_MAX_MS,
+    );
+    logger.info(
+      { attempt: this.reconnectAttempts, delayMs },
+      'Scheduling reconnect with backoff',
+    );
+    setTimeout(async () => {
+      await this.waitForConnectivity();
+      this.connectInternal().catch((err) => {
+        logger.error({ err }, 'Reconnect attempt failed');
+        this.scheduleReconnect();
+      });
+    }, delayMs);
+  }
+
+  /**
+   * Poll DNS until web.whatsapp.com resolves, indicating internet is available.
+   * Logs once when waiting starts and once when connectivity returns.
+   */
+  private async waitForConnectivity(): Promise<void> {
+    let logged = false;
+    while (true) {
+      try {
+        await dns.lookup('web.whatsapp.com');
+        if (logged) {
+          logger.info('Internet connectivity restored');
+        }
+        return;
+      } catch {
+        if (!logged) {
+          logger.warn('No internet connectivity, waiting before reconnect...');
+          logged = true;
+        }
+        await new Promise((r) => setTimeout(r, CONNECTIVITY_CHECK_INTERVAL_MS));
+      }
+    }
   }
 
   async sendMessage(jid: string, text: string): Promise<void> {
