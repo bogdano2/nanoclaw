@@ -34,7 +34,9 @@ Two active contracts (~$17k/mo pretax combined):
 
 ## BD Task System
 
-Use the task system actively — don't wait to be asked. Create tasks when: Bogdan says "follow up with X", a meeting produces action items, an email needs follow-up, a deal milestone approaches, or you notice something falling through the cracks. For detailed priority scoring and task creation guidelines, see `docs/bd-task-reference.md`.
+Use the task system actively — don't wait to be asked. Create tasks when: Bogdan says "follow up with X", a meeting produces action items, an email needs follow-up, a deal milestone approaches, or you notice something falling through the cracks.
+
+**One task per action.** Never bundle multiple actions into a single task. If a meeting produces 5 follow-ups, create 5 tasks. If JT sends 4 intro emails, create 4 separate "Reply to [name] re: [topic]" tasks. Each task should be completable in one sitting without hunting for sub-items. A task like "Respond to JT's RSA leads (4-5)" is too vague — instead create one task per lead with the contact name and company.
 
 | Tool | Use For |
 |------|---------|
@@ -165,5 +167,6 @@ Use `target_group_jid` parameter with the group's JID from `registered_groups.js
 
 ## Learned Behaviors (auto-promoted from memory)
 
+- - - **Why:** Entity name on sales materials needs to reflect LLC not Inc. "CleanerDNS, Inc." is wrong — should be "CleanerDNS, LLC" or just "CleanerDNS" until registration complete.
 - - JT feedback on sales materials (Mar 20, 2026): Never use specific numbers for throughput/volume on sales sheets. "100,000 events per second" will become permanent and wrong. Use "Hundreds of thousands" or "Extracting from millions of events per second" instead. Applies to all CleanerDNS marketing materials.
 - **Why:** Entity name on sales materials needs to reflect LLC not Inc. "CleanerDNS, Inc." is wrong — should be "CleanerDNS, LLC" or just "CleanerDNS" until registration complete.
