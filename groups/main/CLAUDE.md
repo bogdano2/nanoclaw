@@ -101,6 +101,24 @@ Check status: `cat /workspace/extra/sync-results/last_sync.json`
 
 **Check all relevant accounts** — don't assume which account a topic belongs to.
 
+### Google Drive
+
+Use `mcp__gog__gog_command` for Drive operations. All three accounts have Drive access.
+
+```
+# List files in root
+args: ["drive", "ls", "--account=bogdan@cleanerdns.com", "--json"]
+
+# List a specific folder
+args: ["drive", "ls", "--account=bogdan@cleanerdns.com", "--parent=FOLDER_ID"]
+
+# Search for files by name
+args: ["drive", "ls", "--account=bogdan@cleanerdns.com", "--query=name contains 'proposal'"]
+
+# More results (default 20)
+args: ["drive", "ls", "--account=bogdan@cleanerdns.com", "--max=50"]
+```
+
 ## Slack
 
 Slack tools (`mcp__slack__*`): `sync_channels` (run first), `list_channels`, `get_messages`, `get_threads`, `get_user_timeline`, `search_messages`. Data cached in SQLite — first access fetches, subsequent reads serve from cache. DMs resolved by user name. Relative times: "24h", "7d", "2w", "1m". Auth error → tell Bogdan to re-extract xoxc token.
