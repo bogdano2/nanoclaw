@@ -31,7 +31,6 @@ describe('formatLocalTime', () => {
     expect(tokyo).toContain('9:00');
   });
 
-
   it('does not throw on invalid timezone, falls back to UTC', () => {
     expect(() =>
       formatLocalTime('2026-01-01T00:00:00.000Z', 'IST-2'),
