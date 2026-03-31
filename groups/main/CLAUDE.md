@@ -210,7 +210,7 @@ Main has read-only access to the project and read-write access to its group fold
 |----------------|-----------|--------|
 | `/workspace/project` | Project root | read-only |
 | `/workspace/group` | `groups/main/` | read-write |
-| `/workspace/extra/obsidian-vault` | `~/obsidian-vault/` | read-write |
+| `/workspace/extra/obsidian-vault` | `/Users/Shared/obsidian-vault/` | read-write |
 | `/workspace/extra/sync-triggers` | `~/bd-brain-sync/triggers/` | read-write |
 | `/workspace/extra/sync-results` | `~/bd-brain-sync/results/` | read-only |
 | `/workspace/extra/sync-logs` | `~/bd-brain-sync/logs/` | read-only |

@@ -19,9 +19,8 @@ import {
 import { logger } from './logger.js';
 import { BdTaskWithPriority } from './types.js';
 
-// Resolve vault path (supports ~)
 const VAULT_PATH =
-  process.env.OBSIDIAN_VAULT_PATH || path.join(os.homedir(), 'obsidian-vault');
+  process.env.OBSIDIAN_VAULT_PATH || '/Users/Shared/obsidian-vault';
 
 function priorityLabel(score: number): string {
   if (score >= 80) return '🔴';
