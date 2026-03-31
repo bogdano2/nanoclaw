@@ -18,6 +18,7 @@ vi.mock('./config.js', () => ({
   GROUPS_DIR: '/tmp/nanoclaw-test-groups',
   IDLE_TIMEOUT: 1800000, // 30min
   MEMU_PROXY_PORT: 3003,
+  OLLAMA_ADMIN_TOOLS: false,
   ONECLI_URL: 'http://localhost:10254',
   REMINDERS_PROXY_PORT: 3005,
   TIMEZONE: 'America/Los_Angeles',
@@ -61,11 +62,6 @@ vi.mock('./group-folder.js', () => ({
   ),
 }));
 
-// Mock credential-proxy
-vi.mock('./credential-proxy.js', () => ({
-  detectAuthMode: vi.fn(() => 'onecli'),
-}));
-
 // Mock env
 vi.mock('./env.js', () => ({
   readEnvFile: vi.fn(() => ({})),
@@ -85,15 +81,9 @@ vi.mock('./container-runtime.js', () => ({
   stopContainer: vi.fn(),
 }));
 
-// Mock OneCLI SDK
-vi.mock('@onecli-sh/sdk', () => ({
-  OneCLI: class {
-    applyContainerConfig = vi.fn().mockResolvedValue(true);
-    createAgent = vi.fn().mockResolvedValue({ id: 'test' });
-    ensureAgent = vi
-      .fn()
-      .mockResolvedValue({ name: 'test', identifier: 'test', created: true });
-  },
+// Mock credential-proxy
+vi.mock('./credential-proxy.js', () => ({
+  detectAuthMode: vi.fn(() => 'api-key'),
 }));
 
 // Create a controllable fake ChildProcess

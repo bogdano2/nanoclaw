@@ -18,7 +18,6 @@ import {
   IDLE_TIMEOUT,
   MEMU_PROXY_PORT,
   OLLAMA_ADMIN_TOOLS,
-  ONECLI_URL,
   REMINDERS_PROXY_PORT,
   TIMEZONE,
 } from './config.js';
@@ -31,13 +30,10 @@ import {
   readonlyMountArgs,
   stopContainer,
 } from './container-runtime.js';
-import { OneCLI } from '@onecli-sh/sdk';
 import { detectAuthMode } from './credential-proxy.js';
 import { readEnvFile } from './env.js';
 import { validateAdditionalMounts } from './mount-security.js';
 import { RegisteredGroup } from './types.js';
-
-const onecli = new OneCLI({ url: ONECLI_URL });
 
 // Sentinel markers for robust output parsing (must match agent-runner)
 const OUTPUT_START_MARKER = '---NANOCLAW_OUTPUT_START---';
@@ -245,11 +241,10 @@ function buildVolumeMounts(
   return mounts;
 }
 
-async function buildContainerArgs(
+function buildContainerArgs(
   mounts: VolumeMount[],
   containerName: string,
-  agentIdentifier?: string,
-): Promise<string[]> {
+): string[] {
   const args: string[] = ['run', '-i', '--rm', '--name', containerName];
 
   // Pass host timezone so container's local time matches the user's
@@ -308,20 +303,6 @@ async function buildContainerArgs(
     args.push('-e', 'OLLAMA_ADMIN_TOOLS=true');
   }
 
-  // OneCLI gateway handles additional credential injection (if available).
-  const onecliApplied = await onecli.applyContainerConfig(args, {
-    addHostMapping: false, // Nanoclaw already handles host gateway
-    agent: agentIdentifier,
-  });
-  if (onecliApplied) {
-    logger.info({ containerName }, 'OneCLI gateway config applied');
-  } else {
-    logger.warn(
-      { containerName },
-      'OneCLI gateway not reachable — container will use credential proxy only',
-    );
-  }
-
   // Runtime-specific args for host gateway resolution
   args.push(...hostGatewayArgs());
 
@@ -362,15 +343,7 @@ export async function runContainerAgent(
   const mounts = buildVolumeMounts(group, input.isMain);
   const safeName = group.folder.replace(/[^a-zA-Z0-9-]/g, '-');
   const containerName = `nanoclaw-${safeName}-${Date.now()}`;
-  // Main group uses the default OneCLI agent; others use their own agent.
-  const agentIdentifier = input.isMain
-    ? undefined
-    : group.folder.toLowerCase().replace(/_/g, '-');
-  const containerArgs = await buildContainerArgs(
-    mounts,
-    containerName,
-    agentIdentifier,
-  );
+  const containerArgs = buildContainerArgs(mounts, containerName);
 
   logger.debug(
     {
