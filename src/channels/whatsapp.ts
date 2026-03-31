@@ -19,7 +19,16 @@ import {
   STORE_DIR,
 } from '../config.js';
 import { getLastGroupSync, setLastGroupSync, updateChatName } from '../db.js';
-import { logger } from '../logger.js';
+import { logger as baseLogger } from '../logger.js';
+
+// Baileys' ILogger requires level, child, trace — extend our minimal logger
+const logger = {
+  ...baseLogger,
+  level: 'info' as const,
+  trace: (dataOrMsg: Record<string, unknown> | string, msg?: string) =>
+    baseLogger.debug(dataOrMsg, msg),
+  child: () => logger,
+} as any;
 import {
   Channel,
   OnInboundMessage,
