@@ -17,6 +17,7 @@ import {
   GROUPS_DIR,
   IDLE_TIMEOUT,
   MEMU_PROXY_PORT,
+  OLLAMA_ADMIN_TOOLS,
   ONECLI_URL,
   REMINDERS_PROXY_PORT,
   TIMEZONE,
@@ -301,6 +302,11 @@ async function buildContainerArgs(
   // Pass Clarify proxy port so the container's clarify MCP server can reach the host
   args.push('-e', `CLARIFY_PROXY_PORT=${CLARIFY_PROXY_PORT}`);
   args.push('-e', `CLARIFY_PROXY_HOST=${CONTAINER_HOST_GATEWAY}`);
+
+  // Forward Ollama admin tools flag if enabled
+  if (OLLAMA_ADMIN_TOOLS) {
+    args.push('-e', 'OLLAMA_ADMIN_TOOLS=true');
+  }
 
   // OneCLI gateway handles additional credential injection (if available).
   const onecliApplied = await onecli.applyContainerConfig(args, {
