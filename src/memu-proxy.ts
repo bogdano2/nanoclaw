@@ -160,6 +160,13 @@ function generateId(): string {
   return `mem-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+// Strip leading list/quote markers so a re-ingested CLAUDE.md bullet
+// doesn't become a deeper bullet on every promote/inject cycle. Without
+// this, "- foo" → "- - foo" → "- - - foo" each round.
+function stripLineMarkers(s: string): string {
+  return s.replace(/^(?:\s*(?:[-*+•]|>)+)+\s*/, '').trim();
+}
+
 async function storeMemory(
   groupFolder: string,
   content: string,
@@ -167,7 +174,14 @@ async function storeMemory(
   tags: string[] = [],
   source: string = 'explicit',
 ): Promise<string> {
-  // Check for duplicate/similar content — reinforce if exists
+  content = stripLineMarkers(content);
+  if (!content) {
+    throw new Error('storeMemory: content is empty after marker normalization');
+  }
+
+  // Check for duplicate/similar content — reinforce if exists. Insert-time
+  // normalization (above) means new rows are bullet-free, so exact match is
+  // sufficient to deduplicate going forward.
   const existing = db
     .prepare(
       `SELECT id, reinforcement_count FROM memories
@@ -231,13 +245,19 @@ function promoteMemory(groupFolder: string, memoryId: string): void {
 
     const existing = fs.readFileSync(claudeMdPath, 'utf-8');
 
-    if (existing.includes(memory.content)) {
+    const cleanContent = stripLineMarkers(memory.content);
+    if (!cleanContent) {
+      db.prepare('UPDATE memories SET promoted = 1 WHERE id = ?').run(memoryId);
+      return;
+    }
+
+    if (existing.includes(cleanContent)) {
       db.prepare('UPDATE memories SET promoted = 1 WHERE id = ?').run(memoryId);
       return;
     }
 
     const section = '\n\n## Learned Behaviors (auto-promoted from memory)\n\n';
-    const entry = `- ${memory.content}\n`;
+    const entry = `- ${cleanContent}\n`;
 
     if (existing.includes('## Learned Behaviors (auto-promoted from memory)')) {
       const updated = existing.replace(
@@ -502,13 +522,20 @@ function extractPatterns(transcript: string): ExtractedPattern[] {
   const lines = transcript.split('\n');
 
   for (const line of lines) {
+    const cleaned = stripLineMarkers(line);
+    // Skip lines that were just markers, or that came back to us as our own
+    // injected memory block — re-memorizing those is what caused the
+    // exponential bullet bloat that OOM'd the host.
+    if (!cleaned || cleaned.length < 8) continue;
+    if (/^remembered\s+(behaviors|context)|^relevant\s+memories/i.test(cleaned)) continue;
+
     if (
       /\b(no,?\s+(actually|that's|it's|i meant)|that's not right|wrong|incorrect|don't do that|stop doing|never do|always do)\b/i.test(
-        line,
+        cleaned,
       )
     ) {
       patterns.push({
-        content: line.trim(),
+        content: cleaned,
         type: 'behavior',
         tags: ['correction', 'auto-detected'],
       });
@@ -516,19 +543,19 @@ function extractPatterns(transcript: string): ExtractedPattern[] {
 
     if (
       /\b(i prefer|i like when|always use|never use|please always|please never|from now on)\b/i.test(
-        line,
+        cleaned,
       )
     ) {
       patterns.push({
-        content: line.trim(),
+        content: cleaned,
         type: 'behavior',
         tags: ['preference', 'auto-detected'],
       });
     }
 
-    if (/\b(my (email|phone|name|title|company) is)\b/i.test(line)) {
+    if (/\b(my (email|phone|name|title|company) is)\b/i.test(cleaned)) {
       patterns.push({
-        content: line.trim(),
+        content: cleaned,
         type: 'profile',
         tags: ['profile-info', 'auto-detected'],
       });

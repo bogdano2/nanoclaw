@@ -699,17 +699,25 @@ async function main(): Promise<void> {
           behaviors: { content: string; category: string }[];
           relevant: { content: string; category: string; score: number }[];
         };
+        // Strip leading list/quote markers from MemU content — without this,
+        // a memory stored as "- foo" gets re-injected as "- - foo", which the
+        // next session's transcript scanner re-memorizes verbatim, deepening
+        // the bullet on every cycle until the prompt explodes.
+        const stripMarkers = (s: string) =>
+          s.replace(/^(?:\s*(?:[-*+•]|>)+)+\s*/, '').trim();
         const parts: string[] = [];
         if (ctx.behaviors.length > 0) {
           parts.push('## Remembered behaviors (from past sessions)');
           for (const m of ctx.behaviors) {
-            parts.push(`- ${m.content}`);
+            const clean = stripMarkers(m.content);
+            if (clean) parts.push(`- ${clean}`);
           }
         }
         if (ctx.relevant.length > 0) {
           parts.push('## Relevant memories');
           for (const m of ctx.relevant) {
-            parts.push(`- [${m.category}] ${m.content}`);
+            const clean = stripMarkers(m.content);
+            if (clean) parts.push(`- [${m.category}] ${clean}`);
           }
         }
         if (parts.length > 0) {

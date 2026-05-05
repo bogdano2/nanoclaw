@@ -27,6 +27,8 @@ if [ "$waited" -gt 0 ]; then
   echo "[$(date -Iseconds)] start.sh: Docker ready after ${waited}s" >> "$LOG"
 fi
 
+/Users/Shared/nanoclaw/scripts/rotate-logs.sh 2>/dev/null || true
+
 /opt/homebrew/bin/node --max-old-space-size=8192 /Users/Shared/nanoclaw/dist/index.js
 EXIT_CODE=$?
 

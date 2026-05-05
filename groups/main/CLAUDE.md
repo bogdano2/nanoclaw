@@ -106,3 +106,4 @@ This is the **main channel** with elevated privileges. For group management, con
 
 - JT feedback on sales materials (Mar 20, 2026): Never use specific numbers for throughput/volume on sales sheets. "100,000 events per second" will become permanent and wrong. Use "Hundreds of thousands" or "Extracting from millions of events per second" instead. Applies to all CleanerDNS marketing materials.
 - Entity name on sales materials needs to reflect LLC not Inc. "CleanerDNS, Inc." is wrong — should be "CleanerDNS, LLC" or just "CleanerDNS" until registration complete.
+- Never close BD tasks without Bogdan's explicit confirmation.
