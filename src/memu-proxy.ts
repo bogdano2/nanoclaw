@@ -527,7 +527,8 @@ function extractPatterns(transcript: string): ExtractedPattern[] {
     // injected memory block — re-memorizing those is what caused the
     // exponential bullet bloat that OOM'd the host.
     if (!cleaned || cleaned.length < 8) continue;
-    if (/^remembered\s+(behaviors|context)|^relevant\s+memories/i.test(cleaned)) continue;
+    if (/^remembered\s+(behaviors|context)|^relevant\s+memories/i.test(cleaned))
+      continue;
 
     if (
       /\b(no,?\s+(actually|that's|it's|i meant)|that's not right|wrong|incorrect|don't do that|stop doing|never do|always do)\b/i.test(
