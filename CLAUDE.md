@@ -16,7 +16,7 @@ IMPORTANT: This project runs from /Users/Shared/, NOT from ~/. Never assume HOME
 | Memory Defender Sync | /Users/Shared/bd-brain-sync/ |
 | Obsidian Vault | /Users/Shared/obsidian-vault/ |
 | Sync Scripts (canonical) | /Users/Shared/bd-brain-sync/scripts/ |
-| Slug Registry | /Users/Shared/bd-brain-sync/config/slug-registry.json |
+| Slug Registry | /Users/Shared/bd-brain-sync/state/slug-registry.json |
 | Wikilink Entities | /Users/Shared/bd-brain-sync/config/wikilink_entities.json |
 | gog keyring | /Users/Shared/nanoclaw/store/Library/Application Support/gogcli/ |
 | gog HOME override | HOME=/Users/Shared/nanoclaw/store |
