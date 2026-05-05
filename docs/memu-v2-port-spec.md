@@ -6,6 +6,21 @@
 
 ---
 
+## STOP — prerequisites before starting this migration
+
+This spec exists, but **do not start porting until all three of the following are true.** If any are not, surface the gap to the user and wait. Don't quietly begin.
+
+1. **MemU bullet-recursion fix is observably stable for ≥1 week.** Fix was shipped 2026-05-05 (commit `f595a6a`). Earliest valid migration date is therefore around 2026-05-12. Verify before starting:
+   - `groups/main/CLAUDE.md` "Learned Behaviors" section has not regrown bullet bloat (entries should still be ≤3 with single `-` prefix)
+   - `data/memu.db` reinforcement counts on identical content are growing at a sane pace (no row in the thousands within a week)
+   - No `- - - …` patterns in any new memory entries the agent has written
+2. **NanoClaw is still earning its keep.** The user explicitly agreed (2026-05-05 conversation) to evaluate this before committing to a v2 migration. The trigger for the evaluation: he'll spend 2–3 weeks reading the vault from Claude Desktop on his Mac and (eventually) phone Obsidian, tracking how often he actually uses Andy via WhatsApp/etc. If 80%+ of those Andy interactions could have been Claude Desktop sessions, **drop NanoClaw entirely and skip this migration** — the artifact-rich half of his work is genuinely better in Claude Desktop, so the migration is only worth the effort if async/proactive/phone-native value is load-bearing. Confirm the answer was "keep NanoClaw" before proceeding.
+3. **Migration day's ~3-hour block is scheduled and the user is ready.** Per the day-of sequence below, plan ~90 min if v2 docs match the research, budget 3 hours for drift. Don't start migration in a 30-minute window.
+
+If the user (or a fresh Claude session) opens this spec and says "start the migration," ask the gate questions first.
+
+---
+
 ## What MemU is, today (the surface area to port)
 
 | File | Role | Migration outcome |
