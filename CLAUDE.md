@@ -13,11 +13,11 @@ IMPORTANT: This project runs from /Users/Shared/, NOT from ~/. Never assume HOME
 | What | Path |
 |------|------|
 | NanoClaw | /Users/Shared/nanoclaw/ |
-| Memory Defender Sync | /Users/bogdan/bd-brain-sync/ |
+| Memory Defender Sync | /Users/Shared/bd-brain-sync/ |
 | Obsidian Vault | /Users/Shared/obsidian-vault/ |
-| Sync Scripts (canonical) | /Users/bogdan/bd-brain-sync/scripts/ |
-| Slug Registry | /Users/bogdan/bd-brain-sync/config/slug-registry.json |
-| Wikilink Entities | /Users/bogdan/bd-brain-sync/config/wikilink_entities.json |
+| Sync Scripts (canonical) | /Users/Shared/bd-brain-sync/scripts/ |
+| Slug Registry | /Users/Shared/bd-brain-sync/config/slug-registry.json |
+| Wikilink Entities | /Users/Shared/bd-brain-sync/config/wikilink_entities.json |
 | gog keyring | /Users/Shared/nanoclaw/store/Library/Application Support/gogcli/ |
 | gog HOME override | HOME=/Users/Shared/nanoclaw/store |
 | GOG_KEYRING_PASSWORD | nanoclaw |
@@ -26,7 +26,7 @@ IMPORTANT: This project runs from /Users/Shared/, NOT from ~/. Never assume HOME
 
 When running gog commands, always prefix: `HOME=/Users/Shared/nanoclaw/store GOG_KEYRING_PASSWORD=nanoclaw`
 
-When running sync scripts, always use the canonical path: `python3 /Users/bogdan/bd-brain-sync/scripts/<script>.py`
+When running sync scripts, always use the canonical path: `python3 /Users/Shared/bd-brain-sync/scripts/<script>.py`
 
 ## Key Files
 
