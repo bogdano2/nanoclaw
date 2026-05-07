@@ -46,6 +46,13 @@ COPY agent-runner/package*.json ./
 # Install dependencies
 RUN npm install
 
+# Workaround for claude-agent-sdk libc detection bug: it tries the musl variant
+# first (require.resolve succeeds because both optional deps install), then fails
+# at spawn because the musl binary needs /lib/ld-musl-* which Debian doesn't have.
+# Removing the musl variants forces the SDK to fall back to the glibc binary.
+RUN rm -rf /app/node_modules/@anthropic-ai/claude-agent-sdk-linux-arm64-musl \
+           /app/node_modules/@anthropic-ai/claude-agent-sdk-linux-x64-musl
+
 # Copy source code
 COPY agent-runner/ ./
 

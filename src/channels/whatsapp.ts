@@ -39,6 +39,33 @@ import { registerChannel, ChannelOpts } from './registry.js';
 
 const GROUP_SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
+// baileys writes creds.json non-atomically; a SIGKILL mid-write zeroes the file
+// and forces a re-pair. Keep a sibling backup and restore it before opening
+// auth state if the live file came up empty.
+function recoverCredsIfZero(authDir: string): void {
+  const credsPath = path.join(authDir, 'creds.json');
+  const backupPath = path.join(authDir, 'creds.json.bak');
+  const credsStat = fs.statSync(credsPath, { throwIfNoEntry: false });
+  if (!credsStat || credsStat.size > 0) return;
+  const backupStat = fs.statSync(backupPath, { throwIfNoEntry: false });
+  if (!backupStat || backupStat.size === 0) return;
+  fs.copyFileSync(backupPath, credsPath);
+  baseLogger.warn(
+    { recoveredBytes: backupStat.size },
+    'creds.json was zero bytes; restored from creds.json.bak',
+  );
+}
+
+function backupCreds(authDir: string): void {
+  const credsPath = path.join(authDir, 'creds.json');
+  const backupPath = path.join(authDir, 'creds.json.bak');
+  const tmpPath = `${backupPath}.tmp`;
+  const credsStat = fs.statSync(credsPath, { throwIfNoEntry: false });
+  if (!credsStat || credsStat.size === 0) return;
+  fs.copyFileSync(credsPath, tmpPath);
+  fs.renameSync(tmpPath, backupPath);
+}
+
 // Reconnection backoff: starts at 2s, doubles each attempt, caps at 2 hours
 const RECONNECT_BASE_MS = 2_000;
 const RECONNECT_MAX_MS = 2 * 60 * 60 * 1000; // 2 hours
@@ -99,6 +126,7 @@ export class WhatsAppChannel implements Channel {
     // by the 870+ auth files on disk.  Recreating them every ~15 min
     // reconnect cycle leaked hundreds of MB over days.
     if (!this.authState) {
+      recoverCredsIfZero(authDir);
       this.authState = await useMultiFileAuthState(authDir);
       this.cachedKeys = makeCacheableSignalKeyStore(
         this.authState.state.keys,
@@ -206,7 +234,14 @@ export class WhatsAppChannel implements Channel {
       }
     });
 
-    this.sock.ev.on('creds.update', saveCreds);
+    this.sock.ev.on('creds.update', async () => {
+      await saveCreds();
+      try {
+        backupCreds(authDir);
+      } catch (err) {
+        baseLogger.warn({ err }, 'Failed to back up creds.json');
+      }
+    });
 
     this.sock.ev.on('messages.upsert', async ({ messages }) => {
       for (const msg of messages) {

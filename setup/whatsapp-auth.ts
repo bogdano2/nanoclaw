@@ -178,12 +178,14 @@ export async function run(args: string[]): Promise<void> {
   }
 
   // Start auth process in background
+  // Source moved to add-whatsapp skill's add/ folder upstream; compiled JS in
+  // dist/ remains and is the canonical entry point for the auth subprocess.
   const authArgs =
     method === 'pairing-code'
-      ? ['src/whatsapp-auth.ts', '--pairing-code', '--phone', phone]
-      : ['src/whatsapp-auth.ts'];
+      ? ['dist/whatsapp-auth.js', '--pairing-code', '--phone', phone]
+      : ['dist/whatsapp-auth.js'];
 
-  const authProc = spawn('npx', ['tsx', ...authArgs], {
+  const authProc = spawn('node', authArgs, {
     cwd: projectRoot,
     stdio: ['ignore', 'pipe', 'pipe'],
     detached: false,
