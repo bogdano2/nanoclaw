@@ -18,13 +18,14 @@ IMPORTANT: This project runs from /Users/Shared/, NOT from ~/. Never assume HOME
 | Sync Scripts (canonical) | /Users/Shared/bd-brain-sync/scripts/ |
 | Slug Registry | /Users/Shared/bd-brain-sync/state/slug-registry.json |
 | Wikilink Entities | /Users/Shared/bd-brain-sync/config/wikilink_entities.json |
-| gog keyring | /Users/Shared/nanoclaw/store/Library/Application Support/gogcli/ |
-| gog HOME override | HOME=/Users/Shared/nanoclaw/store |
+| gog keyring (canonical) | /Users/Shared/Library/Application Support/gogcli/keyring/ |
+| gog keyring (agent path) | /Users/Shared/nanoclaw/store/Library/Application Support/gogcli/keyring → symlink to canonical |
+| gog HOME override | HOME=/Users/Shared/nanoclaw/store (agents) or HOME=/Users/Shared (sync) — both resolve to the same keyring via symlink |
 | GOG_KEYRING_PASSWORD | nanoclaw |
 | NanoClaw .env | /Users/Shared/nanoclaw/.env |
 | LaunchAgents | ~/Library/LaunchAgents/com.nanoclaw.plist, com.bdbrain.*.plist |
 
-When running gog commands, always prefix: `HOME=/Users/Shared/nanoclaw/store GOG_KEYRING_PASSWORD=nanoclaw`
+When running gog commands, always prefix: `HOME=/Users/Shared/nanoclaw/store GOG_KEYRING_PASSWORD=nanoclaw` (or `HOME=/Users/Shared` — both resolve to the same keyring as of 2026-05-06).
 
 When running sync scripts, always use the canonical path: `python3 /Users/Shared/bd-brain-sync/scripts/<script>.py`
 
