@@ -167,6 +167,64 @@ function stripLineMarkers(s: string): string {
   return s.replace(/^(?:\s*(?:[-*+•]|>)+)+\s*/, '').trim();
 }
 
+// The bullet-recursion bug (fixed 2026-05-05) left truncated copies of
+// memory bodies in the Learned Behaviors section. The exact-match guard in
+// promoteMemory only blocks *new* duplicates; it doesn't fold legacy
+// truncations into their fully-written successors. Run this on every write
+// so the section self-cleans over time:
+//   - drop any bullet whose normalized form is a strict prefix of another
+//     bullet (the truncations)
+//   - strip the leaked `Why:** ` prefix that escapes from feedback-format
+//     memory bodies
+function dedupeLearnedBehaviorsSection(content: string): string {
+  const HEADER = '## Learned Behaviors (auto-promoted from memory)';
+  const start = content.indexOf(HEADER);
+  if (start === -1) return content;
+
+  const afterHeader = start + HEADER.length;
+  const tail = content.slice(afterHeader);
+  const nextHeading = tail.search(/\n##\s/);
+  const sectionEnd =
+    nextHeading === -1 ? content.length : afterHeader + nextHeading;
+
+  const before = content.slice(0, afterHeader);
+  const body = content.slice(afterHeader, sectionEnd);
+  const after = content.slice(sectionEnd);
+
+  const bullets = body.split('\n').filter((l) => l.startsWith('- '));
+  if (bullets.length < 2) return content;
+
+  const normalize = (line: string) =>
+    line
+      .replace(/^- /, '')
+      .replace(/^Why:\*\*\s+/, '')
+      .replace(/\s*\.{3,}\s*$/, '')
+      .trim();
+
+  const sortedDesc = [...new Set(bullets)].sort(
+    (a, b) => normalize(b).length - normalize(a).length,
+  );
+  const kept: string[] = [];
+  for (const line of sortedDesc) {
+    const n = normalize(line);
+    if (!n) continue;
+    if (kept.some((k) => normalize(k).startsWith(n))) continue;
+    kept.push(line);
+  }
+
+  const keptSet = new Set(kept);
+  const seen = new Set<string>();
+  const ordered: string[] = [];
+  for (const line of bullets) {
+    if (keptSet.has(line) && !seen.has(line)) {
+      ordered.push(line.replace(/^- Why:\*\*\s+/, '- '));
+      seen.add(line);
+    }
+  }
+
+  return before + '\n\n' + ordered.join('\n') + '\n' + after;
+}
+
 async function storeMemory(
   groupFolder: string,
   content: string,
@@ -259,15 +317,15 @@ function promoteMemory(groupFolder: string, memoryId: string): void {
     const section = '\n\n## Learned Behaviors (auto-promoted from memory)\n\n';
     const entry = `- ${cleanContent}\n`;
 
-    if (existing.includes('## Learned Behaviors (auto-promoted from memory)')) {
-      const updated = existing.replace(
-        '## Learned Behaviors (auto-promoted from memory)\n\n',
-        `## Learned Behaviors (auto-promoted from memory)\n\n${entry}`,
-      );
-      fs.writeFileSync(claudeMdPath, updated);
-    } else {
-      fs.appendFileSync(claudeMdPath, section + entry);
-    }
+    const nextContent = existing.includes(
+      '## Learned Behaviors (auto-promoted from memory)',
+    )
+      ? existing.replace(
+          '## Learned Behaviors (auto-promoted from memory)\n\n',
+          `## Learned Behaviors (auto-promoted from memory)\n\n${entry}`,
+        )
+      : existing + section + entry;
+    fs.writeFileSync(claudeMdPath, dedupeLearnedBehaviorsSection(nextContent));
 
     db.prepare('UPDATE memories SET promoted = 1 WHERE id = ?').run(memoryId);
     logger.info(
