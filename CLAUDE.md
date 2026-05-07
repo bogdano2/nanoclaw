@@ -44,9 +44,9 @@ When running sync scripts, always use the canonical path: `python3 /Users/Shared
 | `groups/{name}/CLAUDE.md` | Per-group memory (isolated) |
 | `container/skills/` | Skills loaded inside agent containers (browser, status, formatting) |
 
-## Secrets / Credentials / Proxy (OneCLI)
+## Secrets / Credentials / Proxy
 
-API keys, secret keys, OAuth tokens, and auth credentials are managed by the OneCLI gateway — which handles secret injection into containers at request time, so no keys or tokens are ever passed to containers directly. Run `onecli --help`.
+This install uses the **native credential proxy** (`src/credential-proxy.ts`, port 3001) — see `.claude/skills/use-native-credential-proxy/`. Containers connect to the host proxy instead of holding real keys; the proxy injects API keys (or exchanges OAuth placeholders for temp tokens) per request. OneCLI was the previous gateway and has been migrated away from — `onecli` is no longer installed and `@onecli-sh/sdk` is no longer a dependency. Disregard older docs that reference `onecli --help`.
 
 ## Skills
 
@@ -63,7 +63,6 @@ Four types of skills exist in NanoClaw. See [CONTRIBUTING.md](CONTRIBUTING.md) f
 | `/customize` | Adding channels, integrations, changing behavior |
 | `/debug` | Container issues, logs, troubleshooting |
 | `/update-nanoclaw` | Bring upstream NanoClaw updates into a customized install |
-| `/init-onecli` | Install OneCLI Agent Vault and migrate `.env` credentials to it |
 | `/qodo-pr-resolver` | Fetch and fix Qodo PR review issues interactively or in batch |
 | `/get-qodo-rules` | Load org- and repo-level coding rules from Qodo before code tasks |
 
