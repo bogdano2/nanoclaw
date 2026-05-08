@@ -85,9 +85,13 @@ server.tool(
     workspace: z.enum(['cleanerdns', 'appthrive']).default('cleanerdns'),
   },
   async ({ entity, attributes, relationships, workspace }) => {
-    const args: Record<string, unknown> = { entity, attributes };
-    if (relationships) args.relationships = relationships;
-    const output = await clarifyExec('create-record', args, workspace);
+    const record: Record<string, unknown> = { attributes };
+    if (relationships) record.relationships = relationships;
+    const output = await clarifyExec(
+      'create-or-update-records',
+      { entity, records: [record] },
+      workspace,
+    );
     return { content: [{ type: 'text' as const, text: output }] };
   },
 );
@@ -111,9 +115,13 @@ server.tool(
     workspace: z.enum(['cleanerdns', 'appthrive']).default('cleanerdns'),
   },
   async ({ entity, id, attributes, relationships, workspace }) => {
-    const args: Record<string, unknown> = { entity, id, attributes };
-    if (relationships) args.relationships = relationships;
-    const output = await clarifyExec('update-record', args, workspace);
+    const record: Record<string, unknown> = { id, attributes };
+    if (relationships) record.relationships = relationships;
+    const output = await clarifyExec(
+      'create-or-update-records',
+      { entity, records: [record] },
+      workspace,
+    );
     return { content: [{ type: 'text' as const, text: output }] };
   },
 );
