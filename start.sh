@@ -29,7 +29,7 @@ fi
 
 /Users/Shared/nanoclaw/scripts/rotate-logs.sh 2>/dev/null || true
 
-/opt/homebrew/bin/node --max-old-space-size=8192 /Users/Shared/nanoclaw/dist/index.js
+/opt/homebrew/bin/node --max-old-space-size=4096 /Users/Shared/nanoclaw/dist/index.js
 EXIT_CODE=$?
 
 if [ "$EXIT_CODE" -ne 0 ]; then
