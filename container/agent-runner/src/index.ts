@@ -442,7 +442,8 @@ async function runQuery(
         'mcp__memu__*',
         'mcp__reminders__*',
         'mcp__slack__*',
-        'mcp__gmail__*'
+        'mcp__gmail__*',
+        'mcp__vault__*'
       ],
       env: sdkEnv,
       permissionMode: 'bypassPermissions',
@@ -518,6 +519,17 @@ async function runQuery(
             env: {
               CLARIFY_PROXY_PORT: sdkEnv.CLARIFY_PROXY_PORT || '',
               CLARIFY_PROXY_HOST: sdkEnv.CLARIFY_PROXY_HOST || 'host.docker.internal',
+            },
+          },
+        } : {}),
+        ...(fs.existsSync('/workspace/extra/vault-search-data/vault-index.db') ? {
+          vault: {
+            command: 'node',
+            args: [mcpServerPath.replace('ipc-mcp-stdio.js', 'vault-mcp-stdio.js')],
+            env: {
+              VAULT_INDEX_DB: '/workspace/extra/vault-search-data/vault-index.db',
+              OLLAMA_HOST: process.env.OLLAMA_HOST || 'http://host.docker.internal:11434',
+              OLLAMA_EMBED_MODEL: process.env.OLLAMA_EMBED_MODEL || 'nomic-embed-text',
             },
           },
         } : {}),

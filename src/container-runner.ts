@@ -228,6 +228,19 @@ function buildVolumeMounts(
     });
   }
 
+  // Mount the vault-search hybrid index (sqlite-vec + FTS5) so the container
+  // agent can run hybrid semantic+lexical search over the Obsidian vault.
+  // Mounted RW because SQLite WAL mode requires shared-memory coordination
+  // even for readers; the container's own code only issues SELECT statements.
+  const vaultSearchDataDir = '/Users/Shared/vault-search/data';
+  if (fs.existsSync(path.join(vaultSearchDataDir, 'vault-index.db'))) {
+    mounts.push({
+      hostPath: vaultSearchDataDir,
+      containerPath: '/workspace/extra/vault-search-data',
+      readonly: false,
+    });
+  }
+
   // Additional mounts validated against external allowlist (tamper-proof from containers)
   if (group.containerConfig?.additionalMounts) {
     const validatedMounts = validateAdditionalMounts(

@@ -52,11 +52,13 @@ At session start, run `bd_list_tasks` with filter `top`. If anything is overdue,
 
 Mounted at `/workspace/extra/obsidian-vault/` (read-write). Structure: `Areas/{CleanerDNS,AppEsteem,AppThrive,Personal}/{Companies,Contacts,Deals,Emails,Meetings,Slack,WhatsApp,Telegram}/`
 
-**Prefer brain_query for entity lookups, relationships, stale detection, and timelines.** Fall back to `grep` only for free-text content search within file bodies.
+**Three lookup tools, by question shape:**
 
-Run via: `python3 /workspace/extra/obsidian-vault/.brain/brain_query.py <subcommand>`
+1. **`mcp__vault__vault_search`** — hybrid semantic + lexical search (sqlite-vec + FTS5 BM25 with reciprocal rank fusion). Best for prose / paraphrase queries: *"what did we discuss about pricing"*, *"last time threat detection came up"*, *"find anywhere <person> mentioned <topic>"*. Returns one ranked excerpt per file with absolute paths; Read the full file when an excerpt looks relevant.
+2. **`brain_query.py`** — structured entity lookup. Best for: *"status with Acme"*, *"who's been silent 90+ days"*, *"all meetings with X"*. Run via `python3 /workspace/extra/obsidian-vault/.brain/brain_query.py <subcommand>` — `lookup <slug>`, `search <query>`, `stale --days N`, `stats`, `related <slug>`, `timeline <slug>`.
+3. **`grep`** — last resort, when you already know the exact phrase you're looking for.
 
-Commands: `lookup <slug>`, `search <query>`, `stale --days N`, `stats`, `related <slug>`, `timeline <slug>`
+Use vault_search before grep when the question is conceptual; use brain_query before vault_search when the question names a specific entity.
 
 Use summaries for status/overview questions. But when Bogdan asks about the specifics of what someone said, the tone of a conversation, or exact terms/conditions discussed, always load the full transcript or email body — don't rely on the summary alone.
 
