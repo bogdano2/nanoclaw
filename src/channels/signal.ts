@@ -28,11 +28,7 @@
  *   - On `disconnect()`, SIGTERM the daemon and wait briefly before SIGKILL.
  */
 import { spawn, ChildProcess } from 'child_process';
-import {
-  appendFileSync,
-  existsSync,
-  mkdirSync,
-} from 'fs';
+import { appendFileSync, existsSync, mkdirSync } from 'fs';
 import net from 'net';
 import path from 'path';
 
@@ -153,7 +149,10 @@ class SignalChannel implements Channel {
 
     await this.waitForPort(SIGNAL_HOST, SIGNAL_PORT, 30_000);
 
-    this.socket = net.createConnection({ host: SIGNAL_HOST, port: SIGNAL_PORT });
+    this.socket = net.createConnection({
+      host: SIGNAL_HOST,
+      port: SIGNAL_PORT,
+    });
     this.socket.setEncoding('utf8');
     this.socket.on('data', (chunk: string) => this.onSocketData(chunk));
     this.socket.on('error', (err) => {
@@ -232,7 +231,10 @@ class SignalChannel implements Channel {
     this.connected = false;
   }
 
-  private appendToInbox(record: { envelope: unknown; received_at: string }): void {
+  private appendToInbox(record: {
+    envelope: unknown;
+    received_at: string;
+  }): void {
     try {
       const dir = path.dirname(INBOX_PATH);
       if (!existsSync(dir)) {
@@ -241,7 +243,10 @@ class SignalChannel implements Channel {
       appendFileSync(INBOX_PATH, JSON.stringify(record) + '\n');
     } catch (err) {
       logger.warn(
-        { err: err instanceof Error ? err.message : String(err), path: INBOX_PATH },
+        {
+          err: err instanceof Error ? err.message : String(err),
+          path: INBOX_PATH,
+        },
         'failed to append to signal inbox JSONL',
       );
     }
@@ -351,7 +356,10 @@ class SignalChannel implements Channel {
     // Archive every text-bearing envelope to the inbox JSONL BEFORE the
     // @andy trigger filter, so the archive is complete (sync_signal.py
     // can write all DMs to the vault, not just trigger phrases).
-    this.appendToInbox({ envelope: env, received_at: new Date().toISOString() });
+    this.appendToInbox({
+      envelope: env,
+      received_at: new Date().toISOString(),
+    });
 
     // Trigger filter: only "@andy" prefix.
     if (!TRIGGER_RE.test(text.trim())) return;
