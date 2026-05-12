@@ -9,8 +9,13 @@
 
 // telegram
 
-// whatsapp
-import './whatsapp.js';
+// signal
+import './signal.js';
+
+// whatsapp — disabled 2026-05-12 in favor of Signal (privacy + stability).
+// Source preserved in whatsapp.ts for one-commit rollback if Signal fails.
+// To re-enable: uncomment the import below + restart.
+// import './whatsapp.js';
 
 // emacs
 import './emacs.js';

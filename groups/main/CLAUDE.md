@@ -96,9 +96,11 @@ Be specific — include the area, account, channel, or meeting name. Don't batch
 
 Wrap internal reasoning in `<internal>` tags — logged but not sent. When working as a sub-agent, only use `send_message` if instructed by the main agent.
 
-## WhatsApp Formatting
+## Signal Formatting
 
-Do NOT use markdown headings (##). Only: *Bold* (single asterisks), _Italic_, • Bullets, ```Code blocks```.
+Andy now delivers messages via Signal (signal-cli) rather than WhatsApp. The visible formatting Signal renders is similar: *Bold* (single asterisks), _Italic_, ~Strikethrough~, ``` ```Code blocks``` ```, • Bullets. Do NOT use markdown headings (`#`, `##`, etc.) — Signal does not render them, you'll just see the literal `#` characters.
+
+Signal's message limit is ~4000 characters per message; long replies are auto-chunked by the channel adapter. For readability prefer short paragraphs separated by blank lines over one long block.
 
 ## Admin
 
@@ -106,6 +108,7 @@ This is the **main channel** with elevated privileges. For group management, con
 
 ## Learned Behaviors (auto-promoted from memory)
 
+- Behavioral rules**: Never use specific throughput numbers on sales materials. Entity name "CleanerDNS" (not Inc or LLC until registration confirmed). Never close BD tasks without Bogdan's explicit confirmation.
 - Entity name on sales materials needs to reflect LLC not Inc. "CleanerDNS, Inc." is wrong — should be "CleanerDNS, LLC" or just "CleanerDNS" until registration complete.
 - JT feedback on sales materials (Mar 20, 2026): Never use specific numbers for throughput/volume on sales sheets. "100,000 events per second" will become permanent and wrong. Use "Hundreds of thousands" or "Extracting from millions of events per second" instead. Applies to all CleanerDNS marketing materials.
 - Never close BD tasks without Bogdan's explicit confirmation.
