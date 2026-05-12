@@ -14,9 +14,11 @@ import {
   MEMU_PROXY_PORT,
   POLL_INTERVAL,
   REMINDERS_PROXY_PORT,
+  SIGNAL_DETECTOR_PROXY_PORT,
   TIMEZONE,
 } from './config.js';
 import { startClarifyProxy } from './clarify-proxy.js';
+import { startSignalDetectorProxy } from './signal-detector-proxy.js';
 import { startCredentialProxy } from './credential-proxy.js';
 import { startGogProxy } from './gog-proxy.js';
 import { startMemuProxy } from './memu-proxy.js';
@@ -684,6 +686,13 @@ async function main(): Promise<void> {
     PROXY_BIND_HOST,
   );
 
+  // Start signal-detector proxy (sync_plaud / sync_gmail / etc. POST here
+  // to trigger two-pass Haiku+Opus capture; see src/signal-detector.ts).
+  const signalDetectorServer = await startSignalDetectorProxy(
+    SIGNAL_DETECTOR_PROXY_PORT,
+    PROXY_BIND_HOST,
+  );
+
   // Graceful shutdown handlers
   const shutdown = async (signal: string) => {
     logger.info({ signal }, 'Shutdown signal received');
@@ -692,6 +701,7 @@ async function main(): Promise<void> {
     memuServer.close();
     remindersServer.close();
     clarifyServer.close();
+    signalDetectorServer.close();
     await queue.shutdown(10000);
     for (const ch of channels) await ch.disconnect();
     process.exit(0);

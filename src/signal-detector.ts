@@ -28,8 +28,7 @@ import { logger } from './logger.js';
 
 const HAIKU_MODEL =
   process.env.SIGNAL_DETECTOR_HAIKU_MODEL || 'claude-haiku-4-5-20251001';
-const OPUS_MODEL =
-  process.env.SIGNAL_DETECTOR_OPUS_MODEL || 'claude-opus-4-7';
+const OPUS_MODEL = process.env.SIGNAL_DETECTOR_OPUS_MODEL || 'claude-opus-4-7';
 
 const CANDIDATES_PATH =
   process.env.SIGNAL_DETECTOR_CANDIDATES_PATH ||
@@ -279,10 +278,12 @@ Quality grade: "high" only for ideas that genuinely add to his knowledge base. "
   }
   return {
     is_original_thinking: !!parsed.is_original_thinking,
-    insight_quality: (parsed.insight_quality || 'none') as OpusResult['insight_quality'],
+    insight_quality: (parsed.insight_quality ||
+      'none') as OpusResult['insight_quality'],
     summary: String(parsed.summary || ''),
     exact_quote: String(parsed.exact_quote || ''),
-    suggested_filing: (parsed.suggested_filing || 'skip') as OpusResult['suggested_filing'],
+    suggested_filing: (parsed.suggested_filing ||
+      'skip') as OpusResult['suggested_filing'],
   };
 }
 
@@ -347,18 +348,31 @@ export async function runSignalDetector(input: DetectorInput): Promise<void> {
   });
 
   // Structural filter — escalate to Opus only when Bogdan was the speaker.
-  // This is intentionally a structural check (envelope properties), not a
-  // Haiku-judgment call, to avoid the filter swallowing real insights.
+  // Intentionally a structural check (envelope properties + channel kind),
+  // not a Haiku-judgment call, to avoid the filter swallowing real insights.
+  //
+  // Channels in USER_VOICE_CHANNELS always escalate when source matches the
+  // owner — content from these channels is inherently the user's voice
+  // (Plaud meeting recordings, user's own outbound mail/messages). For
+  // ambient channels (Signal DMs from others, inbound Gmail), Haiku has to
+  // affirmatively flag user-speaker content OR the message has to be
+  // Note-to-Self.
+  const USER_VOICE_CHANNELS = new Set(['plaud']);
   const bogdanIsSpeaker = input.source === input.ownerPhone;
   const haikuSpeakerSignal = haiku?.has_user_speaker_content === true;
-  const escalate = bogdanIsSpeaker && (input.noteToSelf || haikuSpeakerSignal);
+  const userVoiceChannel = USER_VOICE_CHANNELS.has(input.channel);
+  const escalate =
+    bogdanIsSpeaker &&
+    (input.noteToSelf || haikuSpeakerSignal || userVoiceChannel);
 
   let opus: OpusResult | null = null;
   let escalationReason: string | null = null;
   if (escalate) {
     escalationReason = input.noteToSelf
       ? 'note_to_self'
-      : 'bogdan_speaker_in_haiku';
+      : userVoiceChannel
+        ? `user_voice_channel:${input.channel}`
+        : 'bogdan_speaker_in_haiku';
     if (haiku) {
       opus = await runOpusJudge(apiKey, { text }, haiku);
     }
