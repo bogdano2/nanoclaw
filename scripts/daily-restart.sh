@@ -24,7 +24,11 @@ set -uo pipefail
 LABEL="com.nanoclaw"
 PORT=3001
 GRACEFUL_TIMEOUT=30      # seconds to wait for SIGTERM-driven exit
-VERIFY_TIMEOUT=60        # seconds to wait for new instance to bind 3001
+# VERIFY_TIMEOUT covers start.sh's Docker-wait window (up to 120s) plus node
+# spinup. Set to 180s after observing two false-positive failures at 60s on
+# 2026-05-12 — the new instance bound port 3001 ~80s after kickstart, well
+# past the old timeout.
+VERIFY_TIMEOUT=180       # seconds to wait for new instance to bind 3001
 LOG="/Users/Shared/nanoclaw/logs/daily-restart.log"
 
 log() {
