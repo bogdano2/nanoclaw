@@ -28,8 +28,13 @@
  *   - On `disconnect()`, SIGTERM the daemon and wait briefly before SIGKILL.
  */
 import { spawn, ChildProcess } from 'child_process';
-import { existsSync, unlinkSync } from 'fs';
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+} from 'fs';
 import net from 'net';
+import path from 'path';
 
 import { Channel, NewMessage } from '../types.js';
 import { logger as baseLogger } from '../logger.js';
@@ -37,9 +42,24 @@ import { registerChannel, ChannelOpts } from './registry.js';
 
 const SIGNAL_CLI = process.env.SIGNAL_CLI_BIN || '/opt/homebrew/bin/signal-cli';
 const ACCOUNT = process.env.SIGNAL_ACCOUNT || '+15129217183';
-const SOCKET_PATH = process.env.SIGNAL_SOCKET || '/tmp/nanoclaw-signal.sock';
+
+// signal-cli 0.14.1's --socket (Unix domain socket) on macOS uses a Java
+// transport that creates an abstract-namespace socket invisible to ls/lsof's
+// file path and unreachable via nc -U or net.createConnection(<path>).
+// --tcp avoids all of that. Local-only bind keeps the security posture
+// identical to a unix socket.
+const SIGNAL_HOST = process.env.SIGNAL_HOST || '127.0.0.1';
+const SIGNAL_PORT = parseInt(process.env.SIGNAL_PORT || '17583', 10);
 const TRIGGER_RE = /^@andy\b/i;
 const SIGNAL_MAX_CHARS = 3500; // Signal client limit is ~4000; leave headroom
+
+// Append-only JSONL archive of every text-bearing envelope the daemon
+// delivers. Consumed by bd-brain-sync/scripts/sync_signal.py to write
+// per-contact markdown files into the Obsidian vault. The path is in
+// nanoclaw's gitignored data dir (no risk of secrets in git).
+const INBOX_PATH =
+  process.env.SIGNAL_INBOX_PATH ||
+  '/Users/Shared/nanoclaw/data/signal-inbox.jsonl';
 
 const logger = baseLogger;
 
@@ -80,7 +100,11 @@ class SignalChannel implements Channel {
   private rpcId = 1;
   private pendingRpc = new Map<
     number,
-    { resolve: (r: unknown) => void; reject: (e: Error) => void; timer: NodeJS.Timeout }
+    {
+      resolve: (r: unknown) => void;
+      reject: (e: Error) => void;
+      timer: NodeJS.Timeout;
+    }
   >();
   private rxBuffer = '';
   private connected = false;
@@ -96,24 +120,18 @@ class SignalChannel implements Channel {
   }
 
   private async spawnDaemonAndConnect(): Promise<void> {
-    // Remove any leftover socket from a prior crashed daemon.
-    if (existsSync(SOCKET_PATH)) {
-      try {
-        unlinkSync(SOCKET_PATH);
-      } catch (err) {
-        logger.warn({ err }, 'failed to remove stale signal socket');
-      }
-    }
-
-    logger.info({ account: ACCOUNT, socket: SOCKET_PATH }, 'starting signal-cli daemon');
+    logger.info(
+      { account: ACCOUNT, host: SIGNAL_HOST, port: SIGNAL_PORT },
+      'starting signal-cli daemon',
+    );
     this.daemon = spawn(
       SIGNAL_CLI,
       [
         '-a',
         ACCOUNT,
         'daemon',
-        '--socket',
-        SOCKET_PATH,
+        '--tcp',
+        `${SIGNAL_HOST}:${SIGNAL_PORT}`,
         '--receive-mode',
         'on-start',
         '--no-receive-stdout',
@@ -133,9 +151,9 @@ class SignalChannel implements Channel {
       if (!this.intentionallyClosed) this.scheduleRestart();
     });
 
-    await this.waitForSocket(SOCKET_PATH, 30_000);
+    await this.waitForPort(SIGNAL_HOST, SIGNAL_PORT, 30_000);
 
-    this.socket = net.createConnection(SOCKET_PATH);
+    this.socket = net.createConnection({ host: SIGNAL_HOST, port: SIGNAL_PORT });
     this.socket.setEncoding('utf8');
     this.socket.on('data', (chunk: string) => this.onSocketData(chunk));
     this.socket.on('error', (err) => {
@@ -148,7 +166,10 @@ class SignalChannel implements Channel {
     });
 
     await new Promise<void>((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error('signal socket connect timeout')), 5000);
+      const timer = setTimeout(
+        () => reject(new Error('signal socket connect timeout')),
+        5000,
+      );
       this.socket!.once('connect', () => {
         clearTimeout(timer);
         resolve();
@@ -211,13 +232,45 @@ class SignalChannel implements Channel {
     this.connected = false;
   }
 
-  private async waitForSocket(path: string, timeoutMs: number): Promise<void> {
+  private appendToInbox(record: { envelope: unknown; received_at: string }): void {
+    try {
+      const dir = path.dirname(INBOX_PATH);
+      if (!existsSync(dir)) {
+        mkdirSync(dir, { recursive: true });
+      }
+      appendFileSync(INBOX_PATH, JSON.stringify(record) + '\n');
+    } catch (err) {
+      logger.warn(
+        { err: err instanceof Error ? err.message : String(err), path: INBOX_PATH },
+        'failed to append to signal inbox JSONL',
+      );
+    }
+  }
+
+  private async waitForPort(
+    host: string,
+    port: number,
+    timeoutMs: number,
+  ): Promise<void> {
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
-      if (existsSync(path)) return;
-      await new Promise((r) => setTimeout(r, 200));
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const probe = net.createConnection({ host, port });
+          probe.once('connect', () => {
+            probe.end();
+            resolve();
+          });
+          probe.once('error', reject);
+        });
+        return;
+      } catch {
+        await new Promise((r) => setTimeout(r, 200));
+      }
     }
-    throw new Error(`signal-cli socket did not appear at ${path} within ${timeoutMs}ms`);
+    throw new Error(
+      `signal-cli did not accept connections at ${host}:${port} within ${timeoutMs}ms`,
+    );
   }
 
   private scheduleRestart(): void {
@@ -247,22 +300,23 @@ class SignalChannel implements Channel {
         const msg = JSON.parse(line) as Record<string, unknown>;
         this.handleRpcMessage(msg);
       } catch (err) {
-        logger.warn({ err, line: line.slice(0, 200) }, 'malformed JSON from signal-cli');
+        logger.warn(
+          { err, line: line.slice(0, 200) },
+          'malformed JSON from signal-cli',
+        );
       }
     }
   }
 
   private handleRpcMessage(msg: Record<string, unknown>): void {
-    if (
-      typeof msg.id === 'number' &&
-      ('result' in msg || 'error' in msg)
-    ) {
+    if (typeof msg.id === 'number' && ('result' in msg || 'error' in msg)) {
       const handler = this.pendingRpc.get(msg.id);
       if (handler) {
         clearTimeout(handler.timer);
         this.pendingRpc.delete(msg.id);
         const r = msg as unknown as JsonRpcResponse;
-        if (r.error) handler.reject(new Error(`${r.error.code}: ${r.error.message}`));
+        if (r.error)
+          handler.reject(new Error(`${r.error.code}: ${r.error.message}`));
         else handler.resolve(r.result);
       }
     } else if (msg.method === 'receive' && msg.params) {
@@ -294,6 +348,11 @@ class SignalChannel implements Channel {
 
     if (!text) return;
 
+    // Archive every text-bearing envelope to the inbox JSONL BEFORE the
+    // @andy trigger filter, so the archive is complete (sync_signal.py
+    // can write all DMs to the vault, not just trigger phrases).
+    this.appendToInbox({ envelope: env, received_at: new Date().toISOString() });
+
     // Trigger filter: only "@andy" prefix.
     if (!TRIGGER_RE.test(text.trim())) return;
 
@@ -312,7 +371,9 @@ class SignalChannel implements Channel {
     }
 
     const jid = `signal:${ACCOUNT}`;
-    const tsIso = timestamp ? new Date(timestamp).toISOString() : new Date().toISOString();
+    const tsIso = timestamp
+      ? new Date(timestamp).toISOString()
+      : new Date().toISOString();
     const messageId = `sig-${timestamp ?? Date.now()}`;
     const stripped = text.replace(/^@andy\s*/i, '').trim();
 
