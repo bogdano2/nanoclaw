@@ -34,6 +34,7 @@ import path from 'path';
 
 import { Channel, NewMessage } from '../types.js';
 import { logger as baseLogger } from '../logger.js';
+import { runSignalDetector } from '../signal-detector.js';
 import { registerChannel, ChannelOpts } from './registry.js';
 
 const SIGNAL_CLI = process.env.SIGNAL_CLI_BIN || '/opt/homebrew/bin/signal-cli';
@@ -361,14 +362,33 @@ class SignalChannel implements Channel {
       received_at: new Date().toISOString(),
     });
 
-    // Trigger filter: only "@andy" prefix.
-    if (!TRIGGER_RE.test(text.trim())) return;
-
-    // Note-to-Self gate: source == destination, both == ACCOUNT.
+    // Note-to-Self determination is needed by BOTH the signal-detector
+    // escalation logic (below) and the @andy trigger filter (further down),
+    // so compute it once here.
     const isNoteToSelf =
       !!env.syncMessage?.sentMessage &&
       destination === ACCOUNT &&
       source === ACCOUNT;
+
+    // Fire-and-forget signal-detector. Two-pass capture (Haiku always,
+    // Opus only when Bogdan-as-speaker). Never blocks message routing
+    // or trigger handling; errors are swallowed inside the detector.
+    void runSignalDetector({
+      channel: 'signal',
+      source: source || '',
+      text: text.trim(),
+      noteToSelf: isNoteToSelf,
+      envelopeTimestamp: timestamp,
+      ownerPhone: ACCOUNT,
+    }).catch((err) => {
+      logger.warn(
+        { err: err instanceof Error ? err.message : String(err) },
+        'signal-detector unexpected throw (should be impossible)',
+      );
+    });
+
+    // Trigger filter: only "@andy" prefix.
+    if (!TRIGGER_RE.test(text.trim())) return;
 
     if (!isNoteToSelf) {
       logger.info(
