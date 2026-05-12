@@ -347,23 +347,38 @@ export async function runSignalDetector(input: DetectorInput): Promise<void> {
     noteToSelf: input.noteToSelf,
   });
 
-  // Structural filter — escalate to Opus only when Bogdan was the speaker.
-  // Intentionally a structural check (envelope properties + channel kind),
-  // not a Haiku-judgment call, to avoid the filter swallowing real insights.
+  // Structural filter — decide whether to escalate to Opus.
   //
-  // Channels in USER_VOICE_CHANNELS always escalate when source matches the
-  // owner — content from these channels is inherently the user's voice
-  // (Plaud meeting recordings, user's own outbound mail/messages). For
-  // ambient channels (Signal DMs from others, inbound Gmail), Haiku has to
-  // affirmatively flag user-speaker content OR the message has to be
-  // Note-to-Self.
-  const USER_VOICE_CHANNELS = new Set(['plaud']);
+  // Three independent paths to escalation; ANY ONE suffices:
+  //   (a) Note-to-Self envelope AND source matches owner (the Signal
+  //       Note-to-Self pattern — verifiable from envelope properties).
+  //   (b) Channel is in USER_VOICE_CHANNELS — the caller has pre-filtered
+  //       to outbound (Bogdan-sent) messages. We trust the caller here
+  //       since each sync script's filter is more specific than what
+  //       signal-detector could re-derive (e.g., msg.out=True in Telegram,
+  //       account match in Gmail).
+  //   (c) Haiku independently flagged user-speaker content AND source
+  //       matches owner — fallback for ambient inbound channels (Signal
+  //       DMs from others, future inbound Gmail) where the caller hasn't
+  //       pre-filtered.
+  //
+  // The structural filter is the routing decision; the Opus prompt itself
+  // is what actually judges insight quality. False-positive escalations
+  // just produce a "skip" verdict from Opus — wasted ~$0.01 but no
+  // pollution of the candidates queue.
+  const USER_VOICE_CHANNELS = new Set([
+    'plaud',
+    'gmail_outbound',
+    'telegram_outbound',
+    'slack_outbound',
+  ]);
   const bogdanIsSpeaker = input.source === input.ownerPhone;
   const haikuSpeakerSignal = haiku?.has_user_speaker_content === true;
   const userVoiceChannel = USER_VOICE_CHANNELS.has(input.channel);
   const escalate =
-    bogdanIsSpeaker &&
-    (input.noteToSelf || haikuSpeakerSignal || userVoiceChannel);
+    (bogdanIsSpeaker && input.noteToSelf) ||
+    userVoiceChannel ||
+    (bogdanIsSpeaker && haikuSpeakerSignal);
 
   let opus: OpusResult | null = null;
   let escalationReason: string | null = null;

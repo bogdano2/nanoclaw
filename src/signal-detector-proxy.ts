@@ -35,7 +35,9 @@ interface DetectRequestBody {
   ownerPhone?: string;
 }
 
-function isValidInput(body: DetectRequestBody): body is Required<DetectRequestBody> {
+function isValidInput(
+  body: DetectRequestBody,
+): body is Required<DetectRequestBody> {
   return (
     typeof body.channel === 'string' &&
     typeof body.source === 'string' &&
@@ -74,7 +76,8 @@ export function startSignalDetectorProxy(
           res.end(
             JSON.stringify({
               status: 'error',
-              error: 'Missing or invalid fields. Required: channel (string), source (string), text (non-empty string), ownerPhone (string).',
+              error:
+                'Missing or invalid fields. Required: channel (string), source (string), text (non-empty string), ownerPhone (string).',
             }),
           );
           return;
