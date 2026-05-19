@@ -4,7 +4,7 @@ Personal Claude assistant. See [README.md](README.md) for philosophy and setup. 
 
 ## Quick Context
 
-Single Node.js process with skill-based channel system. Channels (WhatsApp, Telegram, Slack, Discord, Gmail) are skills that self-register at startup. Messages route to Claude Agent SDK running in containers (Linux VMs). Each group has isolated filesystem and memory.
+Single Node.js process with skill-based channel system. Channels (Signal, Telegram, Slack, Discord, Gmail, Emacs, WhatsApp) are feature skills that self-register at startup. Messages route to Claude Agent SDK running in containers (Linux VMs). Each group has isolated filesystem and memory. This install currently registers `signal` + `emacs` (see `src/channels/index.ts`); other channels are added via the matching `/add-*` skill.
 
 ## Canonical Paths
 
@@ -42,6 +42,7 @@ When running sync scripts, always use the canonical path: `python3 /Users/Shared
 | `src/task-scheduler.ts` | Runs scheduled tasks |
 | `src/db.ts` | SQLite operations |
 | `groups/{name}/CLAUDE.md` | Per-group memory (isolated) |
+| `groups/global/CLAUDE.md` | Global memory (main-channel-only writes; mounted read-only into every agent) |
 | `container/skills/` | Skills loaded inside agent containers (browser, status, formatting) |
 
 ## Secrets / Credentials / Proxy
