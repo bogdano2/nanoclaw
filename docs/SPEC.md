@@ -427,7 +427,7 @@ NanoClaw uses a hierarchical memory system based on CLAUDE.md files.
 
 | Level | Location | Read By | Written By | Purpose |
 |-------|----------|---------|------------|---------|
-| **Global** | `groups/CLAUDE.md` | All groups | Main only | Preferences, facts, context shared across all conversations |
+| **Global** | `groups/global/CLAUDE.md` | All groups | Main only | Preferences, facts, context shared across all conversations |
 | **Group** | `groups/{name}/CLAUDE.md` | That group | That group | Group-specific context, conversation memory |
 | **Files** | `groups/{name}/*.md` | That group | That group | Notes, research, documents created during conversation |
 
@@ -436,12 +436,13 @@ NanoClaw uses a hierarchical memory system based on CLAUDE.md files.
 1. **Agent Context Loading**
    - Agent runs with `cwd` set to `groups/{group-name}/`
    - Claude Agent SDK with `settingSources: ['project']` automatically loads:
-     - `../CLAUDE.md` (parent directory = global memory)
      - `./CLAUDE.md` (current directory = group memory)
+   - Global memory is mounted read-only from `groups/global/` to `/workspace/global/`
+     and read at agent startup (see `container/agent-runner/src/index.ts`).
 
 2. **Writing Memory**
    - When user says "remember this", agent writes to `./CLAUDE.md`
-   - When user says "remember this globally" (main channel only), agent writes to `../CLAUDE.md`
+   - When user says "remember this globally" (main channel only), agent writes to `/workspace/global/CLAUDE.md` (host: `groups/global/CLAUDE.md`)
    - Agent can create files like `notes.md`, `research.md` in the group folder
 
 3. **Main Channel Privileges**
