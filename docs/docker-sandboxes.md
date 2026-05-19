@@ -247,13 +247,10 @@ ANTHROPIC_API_KEY=proxy-managed
 EOF
 mkdir -p data/env && cp .env data/env/env
 
-# Authenticate (choose one):
-
-# QR code — scan with WhatsApp camera:
-npx tsx src/whatsapp-auth.ts
-
-# OR pairing code — enter code in WhatsApp > Linked Devices > Link with phone number:
-npx tsx src/whatsapp-auth.ts --pairing-code --phone <phone-number-no-plus>
+# Authenticate — follow the `/add-whatsapp` skill's Phase 3 (Authentication).
+# The skill walks through QR code / pairing code interactively. The auth
+# script lives at `src/whatsapp-auth.ts` *after* the skill merge.
+# See .claude/skills/add-whatsapp/SKILL.md.
 
 # Register your chat (JID = your phone number + @s.whatsapp.net)
 npx tsx setup/index.ts --step register \
@@ -267,7 +264,7 @@ npx tsx setup/index.ts --step register \
   --no-trigger-required
 ```
 
-**Important:** The WhatsApp skill files (`src/channels/whatsapp.ts` and `src/whatsapp-auth.ts`) also need proxy patches — add `HttpsProxyAgent` for WebSocket connections and a proxy-aware version fetch. Then rebuild.
+**Important:** The WhatsApp skill files brought in by the merge (`src/channels/whatsapp.ts` and `src/whatsapp-auth.ts`) also need proxy patches — add `HttpsProxyAgent` for WebSocket connections and a proxy-aware version fetch. Then rebuild.
 
 ### Both Channels
 
@@ -351,9 +348,9 @@ cd ~ && git clone https://github.com/qwibitai/nanoclaw.git && mv nanoclaw /path/
 ```
 
 ### WhatsApp QR code doesn't display
-Run the auth command interactively inside the sandbox (not piped through `docker sandbox exec`):
+Run the auth interactively inside the sandbox (not piped through `docker sandbox exec`):
 ```bash
 docker sandbox run shell-nanoclaw-workspace
-# Then inside:
-npx tsx src/whatsapp-auth.ts
+# Then inside, follow the /add-whatsapp skill's Phase 3 auth steps
+# (the auth script ships as src/whatsapp-auth.ts inside the skill).
 ```
