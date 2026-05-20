@@ -29,6 +29,21 @@ fi
 
 /Users/Shared/nanoclaw/scripts/rotate-logs.sh 2>/dev/null || true
 
+# Pre-flight: native modules built against a different Node ABI cause exit-1
+# crashloops here, and launchd's KeepAlive cheerfully restarts us every 30s
+# until someone notices. Brew auto-upgrades Node periodically without
+# rebuilding native bindings; this caused a 4-hour outage on 2026-05-20.
+# Quick ABI check, auto-rebuild if mismatched, fail loudly if rebuild fails.
+if ! /opt/homebrew/bin/node -e "require('better-sqlite3')" >/dev/null 2>&1; then
+  echo "[$(date -Iseconds)] start.sh: better-sqlite3 ABI mismatch — rebuilding against $(/opt/homebrew/bin/node --version)" >> "$LOG"
+  if ! (cd /Users/Shared/nanoclaw && /opt/homebrew/bin/npm rebuild better-sqlite3) >>"$LOG" 2>&1; then
+    echo "[$(date -Iseconds)] start.sh: rebuild FAILED — giving up" >> "$LOG"
+    notify "better-sqlite3 rebuild failed. Run: cd /Users/Shared/nanoclaw && npm rebuild better-sqlite3"
+    exit 1
+  fi
+  echo "[$(date -Iseconds)] start.sh: better-sqlite3 rebuilt successfully" >> "$LOG"
+fi
+
 /opt/homebrew/bin/node --max-old-space-size=4096 /Users/Shared/nanoclaw/dist/index.js
 EXIT_CODE=$?
 
