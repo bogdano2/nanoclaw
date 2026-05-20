@@ -225,6 +225,35 @@ function dedupeLearnedBehaviorsSection(content: string): string {
   return before + '\n\n' + ordered.join('\n') + '\n' + after;
 }
 
+// DB-row equivalent of dedupeLearnedBehaviorsSection's prefix-collision logic.
+// The May 6 file-level fix doesn't help the inject path, which reads from the
+// memories table directly and was caught shipping 9 truncated copies of the
+// same behavior to the agent on 2026-05-20. Used by getContextForInjection.
+function dedupeMemoriesByPrefix<T extends { content: string }>(
+  memories: T[],
+): T[] {
+  if (memories.length < 2) return memories;
+  const normalize = (s: string) =>
+    s.replace(/^Why:\*\*\s+/, '').replace(/\s*\.{3,}\s*$/, '').trim();
+  const norm = memories.map((m) => normalize(m.content));
+  const keep = new Set<number>();
+  for (let i = 0; i < memories.length; i++) {
+    const n = norm[i];
+    if (!n) continue;
+    let isPrefixOfLonger = false;
+    for (let j = 0; j < memories.length; j++) {
+      if (i === j) continue;
+      const m = norm[j];
+      if (m.length > n.length && m.startsWith(n)) {
+        isPrefixOfLonger = true;
+        break;
+      }
+    }
+    if (!isPrefixOfLonger) keep.add(i);
+  }
+  return memories.filter((_, i) => keep.has(i));
+}
+
 async function storeMemory(
   groupFolder: string,
   content: string,
@@ -525,14 +554,19 @@ async function getContextForInjection(
   groupFolder: string,
   prompt?: string,
 ): Promise<{ behaviors: Memory[]; relevant: Memory[] }> {
-  const behaviors = db
+  // Oversample (50) so dedupeMemoriesByPrefix has room to drop legacy
+  // truncated copies and still return a useful set. After dedup, cap at 20.
+  const behaviorRows = db
     .prepare(
       `SELECT * FROM memories
        WHERE group_folder = ? AND type = 'behavior'
        ORDER BY reinforcement_count DESC, updated_at DESC
-       LIMIT 20`,
+       LIMIT 50`,
     )
     .all(groupFolder) as MemoryRow[];
+  const behaviors = dedupeMemoriesByPrefix(
+    behaviorRows.map(parseMemoryRow),
+  ).slice(0, 20);
 
   let relevant: Memory[] = [];
   if (prompt) {
@@ -544,10 +578,7 @@ async function getContextForInjection(
     ]);
   }
 
-  return {
-    behaviors: behaviors.map(parseMemoryRow),
-    relevant,
-  };
+  return { behaviors, relevant };
 }
 
 function chunkText(text: string, targetSize: number): string[] {
