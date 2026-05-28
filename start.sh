@@ -34,11 +34,16 @@ fi
 # until someone notices. Brew auto-upgrades Node periodically without
 # rebuilding native bindings; this caused a 4-hour outage on 2026-05-20.
 # Quick ABI check, auto-rebuild if mismatched, fail loudly if rebuild fails.
-if ! /opt/homebrew/bin/node -e "require('better-sqlite3')" >/dev/null 2>&1; then
-  echo "[$(date -Iseconds)] start.sh: better-sqlite3 ABI mismatch — rebuilding against $(/opt/homebrew/bin/node --version)" >> "$LOG"
-  if ! (cd /Users/Shared/nanoclaw && /opt/homebrew/bin/npm rebuild better-sqlite3) >>"$LOG" 2>&1; then
+if ! /opt/homebrew/bin/node -e "new (require('better-sqlite3'))(':memory:').close()" >/dev/null 2>&1; then
+  echo "[$(date -Iseconds)] start.sh: better-sqlite3 ABI mismatch — source-rebuild against $(/opt/homebrew/bin/node --version)" >> "$LOG"
+  # npm rebuild alone won't help: prebuild-install picks the closest prebuilt for
+  # the wrong Node ABI and "succeeds." Wipe build/ and invoke node-gyp via
+  # brew's node so headers match.
+  if ! (cd /Users/Shared/nanoclaw/node_modules/better-sqlite3 \
+        && rm -rf build \
+        && PATH=/opt/homebrew/bin:/usr/bin:/bin /opt/homebrew/bin/npx --yes node-gyp rebuild --release) >>"$LOG" 2>&1; then
     echo "[$(date -Iseconds)] start.sh: rebuild FAILED — giving up" >> "$LOG"
-    notify "better-sqlite3 rebuild failed. Run: cd /Users/Shared/nanoclaw && npm rebuild better-sqlite3"
+    notify "better-sqlite3 source rebuild failed. Check $LOG"
     exit 1
   fi
   echo "[$(date -Iseconds)] start.sh: better-sqlite3 rebuilt successfully" >> "$LOG"
