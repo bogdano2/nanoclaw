@@ -234,7 +234,10 @@ function dedupeMemoriesByPrefix<T extends { content: string }>(
 ): T[] {
   if (memories.length < 2) return memories;
   const normalize = (s: string) =>
-    s.replace(/^Why:\*\*\s+/, '').replace(/\s*\.{3,}\s*$/, '').trim();
+    s
+      .replace(/^Why:\*\*\s+/, '')
+      .replace(/\s*\.{3,}\s*$/, '')
+      .trim();
   const norm = memories.map((m) => normalize(m.content));
   const keep = new Set<number>();
   for (let i = 0; i < memories.length; i++) {
@@ -485,16 +488,35 @@ async function memorizeTranscript(
   content: string,
   sessionId?: string,
 ): Promise<number> {
-  const chunks = chunkText(content, 500);
+  // Strip injected <remembered-context> blocks before chunking. The agent-runner
+  // wraps each user prompt with this block (sourced from the `memories` table);
+  // re-chunking it produces a feedback loop where every conversation deepens the
+  // corpus with copies of the same injected context. We saw 1,389 copies of one
+  // 2KB block accumulate over ~2 months before the prompt exceeded the model's
+  // context window. Removing it here is safe because the original memories
+  // remain in the `memories` table for future injection.
+  const stripped = content.replace(
+    /<remembered-context>[\s\S]*?<\/remembered-context>\s*/g,
+    '',
+  );
+
+  const chunks = chunkText(stripped, 500);
   const now = new Date().toISOString();
 
   const insert = db.prepare(
     `INSERT INTO memory_chunks (id, group_folder, session_id, content, chunk_index, created_at)
      VALUES (?, ?, ?, ?, ?, ?)`,
   );
+  // Belt-and-suspenders dedup: skip insert if an identical chunk already exists
+  // for this group. Catches any future recursion source we haven't yet found.
+  const exists = db.prepare(
+    `SELECT 1 FROM memory_chunks WHERE group_folder = ? AND content = ? LIMIT 1`,
+  );
 
+  let written = 0;
   const insertMany = db.transaction((chunks: string[]) => {
     for (let i = 0; i < chunks.length; i++) {
+      if (exists.get(groupFolder, chunks[i])) continue;
       insert.run(
         generateId(),
         groupFolder,
@@ -503,6 +525,7 @@ async function memorizeTranscript(
         i,
         now,
       );
+      written++;
     }
   });
 
@@ -530,8 +553,10 @@ async function memorizeTranscript(
     });
   }
 
-  // Extract explicit patterns (corrections, preferences) as structured memories
-  const extracted = extractPatterns(content);
+  // Extract explicit patterns (corrections, preferences) as structured memories.
+  // Run against the stripped transcript so injected context doesn't get
+  // re-extracted as new patterns.
+  const extracted = extractPatterns(stripped);
   for (const pattern of extracted) {
     await storeMemory(
       groupFolder,
@@ -542,7 +567,7 @@ async function memorizeTranscript(
     );
   }
 
-  return chunks.length;
+  return written;
 }
 
 /**
